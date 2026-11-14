@@ -14,7 +14,8 @@ body { margin: 0; font: 15px/1.45 system-ui, sans-serif; background: var(--bg); 
 #top { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 10px;
        min-height: 44px; padding: 6px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
 #top.signed-in { justify-content: flex-start; min-height: 52px; padding: 6px 12px; }
-.brand { font-weight: 600; color: var(--text); text-decoration: none; }
+.brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text); text-decoration: none; }
+.brand-mark { width: 26px; height: 26px; flex: none; }
 .top-title { flex: 1; min-width: 0; color: var(--text); text-decoration: none; font-weight: 600; font-size: 16px;
              display: flex; align-items: center; gap: 10px; }
 .top-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -76,7 +76,7 @@ async function render() {
     } catch (err) {
       info = null;
       topBar.className = '';
-      topBar.innerHTML = `<a href="#/" class="brand">Potluck</a><span><span class="muted">${esc(session.user.email)}</span> <button id="out">Sign out</button></span>`;
+      topBar.innerHTML = `<a href="#/" class="brand"><img src="icons/icon-192.png" class="brand-mark" alt="">Potluck</a><span><span class="muted">${esc(session.user.email)}</span> <button id="out">Sign out</button></span>`;
       topBar.querySelector('#out').onclick = act(signOut);
       return renderJoinProblem(err);
     }
@@ -95,7 +95,7 @@ async function signOut() {
 
 function renderSignedOutTop() {
   topBar.className = '';
-  topBar.innerHTML = '<a href="#/" class="brand">Potluck</a>';
+  topBar.innerHTML = '<a href="#/" class="brand"><img src="icons/icon-192.png" class="brand-mark" alt="">Potluck</a>';
 }
 
 // The one bar for signed-in pages: menu button and the current page's title.
@@ -103,7 +103,7 @@ function renderTop(title, g = null) {
   topBar.className = 'signed-in';
   topBar.innerHTML = `
     <button class="icon-button" id="menu" aria-label="Open menu" aria-controls="drawer">${icon('menu')}</button>
-    <a href="#/" class="top-title">${g ? tile(g, 'sm') : ''}<span>${esc(title)}</span></a>`;
+    <a href="#/" class="top-title">${g ? tile(g, 'sm') : '<img src="icons/icon-192.png" class="brand-mark" alt="">'}<span>${esc(title)}</span></a>`;
   topBar.querySelector('#menu').onclick = openDrawer;
   hydrateTiles(topBar);
 }
@@ -118,7 +118,7 @@ function openDrawer() {
     <button class="scrim" aria-label="Close menu" tabindex="-1"></button>
     <aside class="drawer" role="dialog" aria-modal="true" aria-label="Menu">
       <div class="drawer-head">
-        <a href="#/" class="brand">Potluck</a>
+        <a href="#/" class="brand"><img src="icons/icon-192.png" class="brand-mark" alt="">Potluck</a>
         <button class="icon-button" id="close" aria-label="Close menu">${icon('x')}</button>
       </div>
       <label class="drawer-search">${icon('search')}<span hidden>Search apps</span>

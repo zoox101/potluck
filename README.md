@@ -21,6 +21,11 @@ Potluck: a web app where a group of friends (and their agents) build small apps 
 - **The shell** ([web/](web/)) is static files. It signs you in, lists apps and tables, and renders a GUI in a sandboxed iframe. GUIs reach data only through the injected `window.db` SDK ([web/sdk.js](web/sdk.js)), which relays to the same API functions.
 - The database design lives in [supabase/migrations](supabase/migrations/); [supabase/config.toml](supabase/config.toml) holds the project settings, including the hook.
 
+## Apps
+
+- **Taiwan Trip** (will): map of the Taiwan Together trip with everyone's votes. Source: [examples/taiwan-trip.html](examples/taiwan-trip.html). Data in `will.taiwan_places` and `will.taiwan_votes` (each vote is a new row; a traveler's latest row per place counts), imported once from Full Auto's trip snapshot by [scripts/import-taiwan-trip.mjs](scripts/import-taiwan-trip.mjs).
+- **Trip Places** (demo): small example of joining two users' tables. Source: [examples/trip-places.html](examples/trip-places.html).
+
 ## Working on it
 
 Needs Node. The Supabase CLI is a dev dependency; sign it in once with `npx supabase login`.

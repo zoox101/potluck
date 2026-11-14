@@ -26,7 +26,7 @@ Potluck: a web app where a group of friends (and their agents) build small apps 
 ## Apps
 
 - **Taiwan Trip** (will): map of the Taiwan Together trip with everyone's votes. Source: [examples/taiwan-trip.html](examples/taiwan-trip.html). Data in `will.taiwan_places` and `will.taiwan_votes` (each vote is a new row; a traveler's latest row per place counts), imported through the API with an agent key from Full Auto's trip snapshot by [scripts/import-taiwan-trip.mjs](scripts/import-taiwan-trip.mjs).
-- **Trip Places** (demo): small example of joining two users' tables. Source: [examples/trip-places.html](examples/trip-places.html).
+- **Trip Places** (example, not deployed): small example of joining two users' tables. Source: [examples/trip-places.html](examples/trip-places.html); `npm run seed` loads it with demo users.
 
 ## Working on it
 
@@ -42,7 +42,7 @@ npx supabase db push --remote          # apply new migration files
 npx supabase config push               # apply config.toml changes (check `npx supabase config diff` first)
 ```
 
-Demo users `demo_alex`, `demo_sam` and `demo_jo` sign in as `<name>@example.com` with password `password123`; remove them with `npm run admin remove <email>`. Admin commands use the project's secret key through the CLI and never print it.
+`npm run seed` creates demo users `demo_alex`, `demo_sam` and `demo_jo` (sign in as `<name>@example.com`, password `password123`); remove them with `npm run admin remove <email>`. None exist right now. Admin commands use the project's secret key through the CLI and never print it.
 
 ## Deployment
 

@@ -51,8 +51,15 @@ function renderLogin() {
   const form = main.querySelector('form');
   form.onsubmit = act(async (e) => {
     const creds = { email: form.email.value, password: form.password.value };
-    const { error } = e.submitter?.value === 'up' ? await sb.auth.signUp(creds) : await sb.auth.signInWithPassword(creds);
-    if (error) throw error;
+    if (e.submitter?.value === 'up') {
+      // Send the confirmation link back to this page (not just the domain root).
+      const { data, error } = await sb.auth.signUp({ ...creds, options: { emailRedirectTo: location.origin + location.pathname } });
+      if (error) throw error;
+      if (!data.session) throw new Error('Check your email for a confirmation link, then sign in.');
+    } else {
+      const { error } = await sb.auth.signInWithPassword(creds);
+      if (error) throw error;
+    }
     render();
   });
 }

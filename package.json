@@ -6,6 +6,7 @@
   },
   "scripts": {
     "start": "supabase start && scripts/config.sh",
+    "config": "scripts/config.sh",
     "stop": "supabase stop",
     "reset": "supabase db reset && node scripts/seed.mjs",
     "serve": "python3 -m http.server 8080 -d web",

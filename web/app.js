@@ -4,8 +4,10 @@ import { SDK, ALLOWED } from './sdk.js?v=dev';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const main = document.getElementById('main');
-const who = document.getElementById('who');
+const topBar = document.getElementById('top');
+const drawer = document.getElementById('drawer');
 let cleanup = () => {};
+let info = null; // latest describe() result while signed in; feeds the drawer
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -26,20 +28,152 @@ function showError(err) {
   box.textContent = err.message;
 }
 
+// ---------- icons (Lucide, https://lucide.dev/icons) ----------
+
+const ICONS = 'https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/';
+const ICON_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const icon = (name) => `<span class="ico" style="--icon:url(${ICONS}${name}.svg)" aria-hidden="true"></span>`;
+
+// Apps without a color get a stable one picked from their name.
+const PALETTE = ['#2f6fd6', '#d65a31', '#2e9d6a', '#8a4fd6', '#d6a531', '#d63f7a', '#2c9ab0', '#6b7a2e'];
+const colorFor = (g) => g.color || PALETTE[[...g.name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % PALETTE.length];
+
+// An app's tile shows its initial until its icon is confirmed to exist (unknown names 404).
+const known = new Map(); // icon name -> Promise<boolean>
+const iconExists = (name) => {
+  if (!known.has(name)) known.set(name, fetch(`${ICONS}${name}.svg`).then((r) => r.ok, () => false));
+  return known.get(name);
+};
+function tile(g, size = '') {
+  const initial = esc([...(g.name || '?').trim()][0]?.toUpperCase() ?? '?');
+  const name = ICON_RE.test(g.icon ?? '') ? g.icon : '';
+  return `<span class="tile ${size}" style="--c:${colorFor(g)}" data-icon="${name}">${initial}</span>`;
+}
+function hydrateTiles(root) {
+  root.querySelectorAll('.tile[data-icon]:not([data-icon=""])').forEach(async (el) => {
+    const name = el.dataset.icon;
+    el.removeAttribute('data-icon');
+    if (await iconExists(name)) el.innerHTML = icon(name);
+  });
+}
+
+// ---------- routing ----------
+
 async function render() {
   cleanup(); cleanup = () => {};
+  closeDrawer();
   main.className = '';
   const [, route, id] = location.hash.split('/');
-  if (route === 'edit') return renderEditGuide();
+  if (route === 'edit') { info = null; renderSignedOutTop(); return renderEditGuide(); }
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { who.innerHTML = ''; return route === 'view' ? renderLogin() : renderStart(); }
-  const info = await rpc('describe');
-  who.innerHTML = `<span class="muted">${esc(info.me ?? session.user.email)}</span> <button id="out">Sign out</button>`;
-  document.getElementById('out').onclick = act(async () => { await sb.auth.signOut(); location.hash = '#/'; render(); });
-  if (!info.me) return renderClaim();
-  if (route === 'gui' && id) return renderGui(id, info.me);
-  renderDashboard(info);
+  if (!session) { info = null; renderSignedOutTop(); return route === 'view' ? renderLogin() : renderStart(); }
+  const described = await rpc('describe');
+  if (!described.me) {
+    info = null;
+    topBar.className = '';
+    topBar.innerHTML = `<a href="#/" class="brand">Potluck</a><span><span class="muted">${esc(session.user.email)}</span> <button id="out">Sign out</button></span>`;
+    topBar.querySelector('#out').onclick = act(signOut);
+    return renderClaim();
+  }
+  info = { ...described, email: session.user.email };
+  if (route === 'gui' && id) return renderGui(id);
+  if (route === 'settings') return renderSettings();
+  renderDashboard();
 }
+
+async function signOut() {
+  await sb.auth.signOut();
+  location.hash = '#/';
+  render();
+}
+
+function renderSignedOutTop() {
+  topBar.className = '';
+  topBar.innerHTML = '<a href="#/" class="brand">Potluck</a>';
+}
+
+// The one bar for signed-in pages: menu button and the current page's title.
+function renderTop(title, g = null) {
+  topBar.className = 'signed-in';
+  topBar.innerHTML = `
+    <button class="icon-button" id="menu" aria-label="Open menu" aria-controls="drawer">${icon('menu')}</button>
+    <a href="#/" class="top-title">${g ? tile(g, 'sm') : ''}<span>${esc(title)}</span></a>`;
+  topBar.querySelector('#menu').onclick = openDrawer;
+  hydrateTiles(topBar);
+}
+
+// ---------- drawer ----------
+
+function openDrawer() {
+  if (!info) return;
+  const [, route, id] = location.hash.split('/');
+  const current = route === 'gui' ? id : route === 'settings' ? 'settings' : 'home';
+  drawer.innerHTML = `
+    <button class="scrim" aria-label="Close menu" tabindex="-1"></button>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-label="Menu">
+      <div class="drawer-head">
+        <a href="#/" class="brand">Potluck</a>
+        <button class="icon-button" id="close" aria-label="Close menu">${icon('x')}</button>
+      </div>
+      <label class="drawer-search">${icon('search')}<span hidden>Search apps</span>
+        <input type="search" placeholder="Search apps" autocomplete="off" spellcheck="false"></label>
+      <nav></nav>
+      <div class="drawer-foot">
+        <a href="#/settings" class="nav-item ${current === 'settings' ? 'active' : ''}">${icon('settings')}<span>Settings</span></a>
+      </div>
+    </aside>`;
+  const input = drawer.querySelector('input');
+  const nav = drawer.querySelector('nav');
+  let hl = 0;
+  const draw = () => {
+    const q = input.value.trim().toLowerCase();
+    const apps = info.guis.filter((g) => !q || `${g.name} ${g.description} ${g.owner}`.toLowerCase().includes(q));
+    hl = Math.min(hl, Math.max(apps.length - 1, 0));
+    nav.innerHTML = `
+      ${q ? '' : `<a href="#/" class="nav-item ${current === 'home' ? 'active' : ''}">${icon('layout-grid')}<span>All apps</span></a>`}
+      <div class="nav-label">Apps</div>
+      ${apps.map((g, i) => `
+        <a href="#/gui/${g.id}" class="nav-item app ${g.id === current ? 'active' : ''} ${q && i === hl ? 'hl' : ''}">${tile(g)}<span>${esc(g.name)}</span></a>`).join('')
+        || `<p class="nav-empty">${q ? 'No apps match that search.' : 'No apps yet.'}</p>`}`;
+    hydrateTiles(nav);
+    nav.querySelector('.hl')?.scrollIntoView({ block: 'nearest' });
+  };
+  input.oninput = () => { hl = 0; draw(); };
+  input.onkeydown = (e) => {
+    const items = nav.querySelectorAll('.nav-item.app');
+    if (e.key === 'ArrowDown') { e.preventDefault(); hl = Math.min(hl + 1, items.length - 1); draw(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); hl = Math.max(hl - 1, 0); draw(); }
+    if (e.key === 'Enter') {
+      const pick = input.value.trim() ? items[hl] : null;
+      if (pick) { e.preventDefault(); closeDrawer(); location.hash = pick.getAttribute('href'); }
+    }
+  };
+  // Links close the drawer; following the current page's link re-renders nothing, so close explicitly.
+  drawer.onclick = (e) => { if (e.target.closest('a, .scrim, #close')) closeDrawer(); };
+  draw();
+  drawer.hidden = false;
+  document.body.style.overflow = 'hidden';
+  // Phones get the search box at the bottom; focusing it would pop the keyboard over the list.
+  if (matchMedia('(min-width: 768px)').matches) input.focus();
+}
+
+function closeDrawer() {
+  if (drawer.hidden) return;
+  drawer.hidden = true;
+  drawer.innerHTML = '';
+  document.body.style.overflow = '';
+  topBar.querySelector('#menu')?.focus();
+}
+
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeDrawer();
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && info) {
+    e.preventDefault();
+    drawer.hidden ? openDrawer() : closeDrawer();
+  }
+});
+
+// ---------- signed-out pages ----------
 
 // Two ways in: people view the dashboard by signing in; editing goes through the API.
 function renderStart() {
@@ -111,33 +245,43 @@ function renderClaim() {
   });
 }
 
-function renderDashboard({ me, guis, tables }) {
-  const names = Object.fromEntries(guis.map((g) => [g.id, g.name]));
+// ---------- signed-in pages ----------
+
+function renderDashboard() {
+  renderTop('Potluck');
   main.innerHTML = `
-    <div class="row"><h2 style="margin-right:auto">Apps</h2><button id="new" class="primary">New app</button></div>
-    <div class="grid">${guis.map((g) => `
-      <div class="card">
+    <h1>Apps</h1>
+    <div class="apps">${info.guis.map((g) => `
+      <a class="app-card" href="#/gui/${g.id}">
+        ${tile(g, 'lg')}
         <strong>${esc(g.name)}</strong>
-        <span class="muted">by ${esc(g.owner)} · v${g.version}${g.forked_from ? ` · forked from ${esc(names[g.forked_from] ?? 'a deleted app')}` : ''}</span>
-        ${g.description ? `<span>${esc(g.description)}</span>` : ''}
-        <div class="row">
-          <a href="#/gui/${g.id}"><button>Open</button></a>
-          ${g.owner === me ? `<button data-delete="${g.id}">Delete</button>` : `<button data-fork="${g.id}">Fork</button>`}
+        ${g.description ? `<span class="desc">${esc(g.description)}</span>` : ''}
+        <span class="by">by ${esc(g.owner)}</span>
+      </a>`).join('') || '<p class="muted">No apps yet. Ask your agent to add one.</p>'}
+    </div>`;
+  hydrateTiles(main);
+}
+
+function renderSettings() {
+  renderTop('Settings');
+  main.innerHTML = `
+    <div class="settings">
+      <h1>Settings</h1>
+      <section>
+        <h2>Account</h2>
+        <div class="card account">
+          <div><strong>${esc(info.me)}</strong><div class="muted">${esc(info.email)}</div></div>
+          <button id="out">${icon('log-out')} Sign out</button>
         </div>
-      </div>`).join('') || '<p class="muted">No apps yet.</p>'}
-    </div>
-    <h2>Tables</h2>
-    <div class="grid">${tables.map((t) => `
-      <div class="card">
-        <strong><code>${esc(t.table)}</code></strong>
-        <span class="muted">${t.columns.map((c) => esc(c.name)).join(', ')}</span>
-        ${t.read_by.length ? `<span class="muted">Read by ${t.read_by.map((id) => esc(names[id])).join(', ')}</span>` : ''}
-      </div>`).join('') || '<p class="muted">No tables yet.</p>'}
-    </div>
-    <div class="row"><h2 style="margin-right:auto">Agent keys</h2><button id="newkey">New key</button></div>
-    <p class="muted">A key lets your agent change the site as you, following <a href="llms.txt">the agent instructions</a>. Keys can't create other keys.</p>
-    <div id="newkeybox"></div>
-    <div id="keys" class="grid"></div>`;
+      </section>
+      <section>
+        <div class="row"><h2 style="margin-right:auto">Agent keys</h2><button id="newkey">New key</button></div>
+        <p class="muted" style="margin:0">A key lets your agent change the site as you, following <a href="llms.txt">the agent instructions</a>. Keys can't create other keys.</p>
+        <div id="newkeybox"></div>
+        <div id="keys" class="grid"></div>
+      </section>
+    </div>`;
+  main.querySelector('#out').onclick = act(signOut);
   renderKeys();
   main.querySelector('#newkey').onclick = act(async () => {
     const name = prompt('What is this key for? (e.g. "Claude Code on laptop")');
@@ -157,21 +301,6 @@ function renderDashboard({ me, guis, tables }) {
       main.querySelector('#copykey').textContent = 'Copied';
     });
   });
-  main.querySelector('#new').onclick = act(async () => {
-    const name = prompt('App name');
-    if (!name) return;
-    const { id } = await rpc('save_gui', { name, code: STARTER });
-    location.hash = `#/gui/${id}`;
-  });
-  main.querySelectorAll('[data-fork]').forEach((b) => (b.onclick = act(async () => {
-    const { id } = await rpc('fork_gui', { id: b.dataset.fork });
-    location.hash = `#/gui/${id}`;
-  })));
-  main.querySelectorAll('[data-delete]').forEach((b) => (b.onclick = act(async () => {
-    if (!confirm('Delete this app and all its versions?')) return;
-    await rpc('delete_gui', { id: b.dataset.delete });
-    render();
-  })));
 }
 
 async function renderKeys() {
@@ -190,42 +319,19 @@ async function renderKeys() {
   })));
 }
 
-async function renderGui(id, me) {
+async function renderGui(id) {
+  const listed = info.guis.find((g) => g.id === id);
+  renderTop(listed?.name ?? 'Loading…', listed);
   const gui = await rpc('get_gui', { id });
   if (!gui) throw new Error('App not found');
-  const mine = gui.owner === me;
+  renderTop(gui.name, gui);
+  document.title = `${gui.name} · Potluck`;
   main.className = 'full';
-  main.innerHTML = `
-    <div class="bar">
-      <a href="#/"><button>&larr; Apps</button></a>
-      <span class="title">${esc(gui.name)}</span>
-      <span class="muted">by ${esc(gui.owner)} · v${gui.version} of ${gui.versions}</span>
-      <button id="source">Source</button>
-      ${mine ? '' : '<button id="fork">Fork</button>'}
-    </div>
-    <iframe sandbox="allow-scripts allow-forms allow-modals allow-popups" title="${esc(gui.name)}"></iframe>`;
+  main.innerHTML = `<iframe sandbox="allow-scripts allow-forms allow-modals allow-popups" title="${esc(gui.name)}"></iframe>`;
   const frame = main.querySelector('iframe');
-  cleanup = bridge(frame);
+  const unbridge = bridge(frame);
+  cleanup = () => { unbridge(); document.title = 'Potluck'; };
   frame.srcdoc = withSdk(gui.code);
-
-  main.querySelector('#fork')?.addEventListener('click', act(async () => {
-    const { id: forked } = await rpc('fork_gui', { id });
-    location.hash = `#/gui/${forked}`;
-  }));
-  main.querySelector('#source').onclick = () => {
-    if (main.querySelector('.source')) return render();
-    frame.remove();
-    main.insertAdjacentHTML('beforeend', `
-      <div class="source">
-        <span class="muted">${mine ? 'Saving creates a new version.' : 'Read-only. Fork this app to change it.'}</span>
-        <textarea ${mine ? '' : 'readonly'}>${esc(gui.code)}</textarea>
-        ${mine ? '<div class="row"><button class="primary" id="save">Save new version</button></div>' : ''}
-      </div>`);
-    main.querySelector('#save')?.addEventListener('click', act(async () => {
-      await rpc('save_gui', { id, name: gui.name, code: main.querySelector('textarea').value });
-      render();
-    }));
-  };
 }
 
 // Put the SDK first in <head> so GUI scripts can use `db` right away.
@@ -266,17 +372,6 @@ const SAVE_KEY = {
   'Windows (PowerShell)': 'New-Item -ItemType Directory -Force "$HOME\\.config\\potluck" | Out-Null; Get-Clipboard | Set-Content -NoNewline "$HOME\\.config\\potluck\\agent.key"',
   Linux: 'mkdir -p ~/.config/potluck && xclip -o -selection clipboard > ~/.config/potluck/agent.key && chmod 600 ~/.config/potluck/agent.key',
 };
-
-const STARTER = `<!doctype html>
-<html>
-<head><meta charset="utf-8"><title>New app</title></head>
-<body style="font-family: system-ui; padding: 16px">
-  <h1>Hello!</h1>
-  <p id="me"></p>
-  <script>db.me().then((me) => (document.getElementById('me').textContent = 'Signed in as ' + me));</script>
-</body>
-</html>
-`;
 
 addEventListener('hashchange', act(render));
 sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') setTimeout(act(render)); });

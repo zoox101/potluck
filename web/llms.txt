@@ -13,7 +13,7 @@ Look in this order and use the first one found:
 
 That file contains only the Potluck key (`pk_` followed by 48 hex characters); trim whitespace. Read nothing else from the user's machine for this. Never print or share the key.
 
-If there is no key, stop and ask the user to create one: sign in at https://zoox101.github.io/potluck/, click "New key" under "Agent keys", copy it, and save it with the command the site shows for their OS. Never ask for or use their password.
+If there is no key, stop and ask the user to create one: sign in at https://zoox101.github.io/potluck/, open Settings (the gear at the bottom of the menu), click "New key" under "Agent keys", copy it, and save it with the command the site shows for their OS. Never ask for or use their password.
 
 ## 2. Call the API
 
@@ -38,7 +38,7 @@ A page is one self-contained HTML document saved with `save_gui`. The site rende
 
 1. If the page needs its own data, `create_table` under your username (e.g. `{"name": "packing_list", "columns": [{"name": "item", "type": "text", "required": true}]}` creates `<me>.packing_list`).
 2. Write the HTML using `db`.
-3. `save_gui` with `name`, `code`, a one-line `description`, and `reads` listing every table it reads. It returns `{id, version}`.
+3. `save_gui` with `name`, `code`, a one-line `description`, `reads` listing every table it reads, and an `icon` and `color` for the apps page and menu: `icon` is a Lucide icon name from https://lucide.dev/icons (e.g. `map`, `plane`, `list-checks`) and `color` a hex color like `#2f6fd6`. It returns `{id, version}`.
 4. Tell the user the page is at `https://zoox101.github.io/potluck/#/gui/<id>`. To change it later, `save_gui` again with the same `id` (each save is a new version).
 
 The `db` object inside a page:
@@ -79,7 +79,7 @@ Pages run for whoever opens them, so `db.me()` is the viewer, and writes are att
 | `update_row` | `table_name`, `id`, `data` | the updated row |
 | `delete_row` | `table_name`, `id` | the deleted row |
 | `query` | `sql` (one read-only `SELECT`; use `owner.table` names) | array of rows |
-| `save_gui` | `name`, `code`, `description?`, `reads?`, `id?` (omit to create) | `{id, version}` |
+| `save_gui` | `name`, `code`, `description?`, `reads?`, `id?` (omit to create), `icon?`, `color?` (omitted keeps the current value, `''` clears it) | `{id, version}` |
 | `get_gui` | `id`, `version?` (default latest) | the GUI with its `code` and version count |
 | `fork_gui` | `id`, `name?` | `{id, version}` of your copy |
 | `delete_gui` | `id` | `id` |

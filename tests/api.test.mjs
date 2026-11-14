@@ -118,6 +118,22 @@ test('GUIs: owner saves versions, others fork, schema changes are guarded', asyn
   assert.ok(info.tables.find((t) => t.table === T).read_by.includes(gui.id));
 });
 
+test('GUI icons: set, kept when omitted, cleared with empty string, copied by forks', async () => {
+  const gui = await a('save_gui', { name: 'Icons', code: 'x', icon: 'map-pin', color: '#2f6fd6' });
+  let g = await a('get_gui', { id: gui.id });
+  assert.deepEqual([g.icon, g.color], ['map-pin', '#2f6fd6']);
+  await a('save_gui', { id: gui.id, name: 'Icons', code: 'y' });
+  g = (await a('describe')).guis.find((x) => x.id === gui.id);
+  assert.deepEqual([g.icon, g.color], ['map-pin', '#2f6fd6']);
+  const fork = await b('fork_gui', { id: gui.id });
+  assert.equal((await b('get_gui', { id: fork.id })).icon, 'map-pin');
+  await rejects(a('save_gui', { id: gui.id, name: 'Icons', code: 'z', icon: 'Not An Icon' }), /check constraint/);
+  await rejects(a('save_gui', { id: gui.id, name: 'Icons', code: 'z', color: 'blue' }), /check constraint/);
+  await a('save_gui', { id: gui.id, name: 'Icons', code: 'z', icon: '', color: '' });
+  g = await a('get_gui', { id: gui.id });
+  assert.deepEqual([g.icon, g.color], [null, null]);
+});
+
 test('withdrawing approval locks a member out', async () => {
   await admin('disallow_email', { email: `tb_${tag}@example.com` });
   await rejects(b('insert_row', { table_name: T, data: { label: 'x' } }), /approved email/);

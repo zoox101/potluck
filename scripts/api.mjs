@@ -58,11 +58,11 @@ export const admin = (fn, args = {}) => request(`/rest/v1/rpc/${fn}`, secretKey(
 export const createUser = (email, password) =>
   request('/auth/v1/admin/users', secretKey(), null, { email, password, email_confirm: true });
 
-// Approve, create and sign in a user, then claim a username. Returns rpc for that user.
+// Approve an email with a username, create and sign in the user, then join. Returns rpc for that user.
 export async function newUser(username, password = 'password123', email = `${username}@example.com`) {
-  await admin('allow_email', { email });
+  await admin('allow_email', { email, username });
   await createUser(email, password);
   const rpc = client(await signIn(email, password));
-  await rpc('claim_username', { name: username });
+  await rpc('claim_username');
   return rpc;
 }

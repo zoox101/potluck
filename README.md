@@ -14,15 +14,15 @@ Potluck: a web app where a group of friends (and their agents) build small apps 
 8. Simple per-user tokens: agent keys a member creates on the site for their agents.
 9. Hosted on free tiers: Supabase (Postgres) plus GitHub Pages for the shell.
 10. Agents call the REST API directly (no MCP needed).
-11. Only approved emails can sign up, and only the admin (Will) approves them.
+11. Only approved emails can sign up, and only the admin (Will) approves them, choosing each member's username at the same time.
 12. Agents (mine included) change the site only through the API with their own agent key; no admin shortcuts around it.
 
 ## How it works
 
 - **Supabase** (project `potluck`) holds everything: users, each user's schema of tables (`will.places`), and GUIs with their version history. Users and agents only call the functions in the agent guide, [web/llms.txt](web/llms.txt) (served at https://zoox101.github.io/potluck/llms.txt).
-- **Sign-up** is limited to an approved-email list, enforced by a Supabase "before user created" hook and again in every API function. Sign-ups confirm their email.
+- **Sign-up** is limited to an approved-email list, enforced by a Supabase "before user created" hook and again in every API function. Sign-ups confirm their email. The admin sets each email's username when approving it; on first sign-in the shell calls `claim_username()`, which takes that name. Usernames are permanent once claimed because they name the member's schema.
 - **Agents** call the API with an agent key (`x-potluck-key` header). A key acts as its owner through the same functions and row rules, cannot create keys, and can be revoked on the site.
-- **The shell** ([web/](web/)) is static files. It signs you in, lists apps and tables, and renders a GUI in a sandboxed iframe. GUIs reach data only through the injected `window.db` SDK ([web/sdk.js](web/sdk.js)), which relays to the same API functions.
+- **The shell** ([web/](web/)) is static files. It signs you in, lists apps (with their Lucide icons) in a slide-out menu and on the apps page, holds agent keys under Settings, and renders a GUI in a sandboxed iframe. GUIs reach data only through the injected `window.db` SDK ([web/sdk.js](web/sdk.js)), which relays to the same API functions.
 - The database design lives in [supabase/migrations](supabase/migrations/); [supabase/config.toml](supabase/config.toml) holds the project settings, including the hook.
 
 ## Apps
@@ -39,7 +39,7 @@ npm install
 npm run serve                          # local copy of the shell at http://127.0.0.1:8080
 npm test                               # API rule tests (creates and removes throwaway users)
 npm run seed                           # (re)create the demo users, tables and apps
-npm run admin allow friend@email.com   # approve a friend; also: disallow, remove, list
+npm run admin allow friend@email.com alice   # approve a friend as username alice; also: disallow, remove, list
 npx supabase db push --remote          # apply new migration files
 npx supabase config push               # apply config.toml changes (check `npx supabase config diff` first)
 ```

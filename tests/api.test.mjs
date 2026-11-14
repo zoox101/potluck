@@ -53,17 +53,27 @@ test('only approved emails can sign up', async () => {
 
 test('members can not use admin functions', () => rejects(a('allow_email', { email: 'x@example.com' }), /permission denied/));
 
-test('usernames must be valid and free; non-members see nothing', async () => {
+test('the admin sets usernames when approving; members join with theirs', async () => {
   const email = `tc_${tag}@example.com`;
   emails.push(email);
-  await admin('allow_email', { email });
+  await rejects(admin('allow_email', { email }), /Give a username/);
+  await rejects(admin('allow_email', { email, username: 'public' }), /reserved/);
+  await rejects(admin('allow_email', { email, username: 'Bad Name' }), /lowercase/);
+  await rejects(admin('allow_email', { email, username: `ta_${tag}` }), /taken/);
+  await admin('allow_email', { email, username: `tz_${tag}` });
+  await rejects(admin('allow_email', { email: `other_${tag}@example.com`, username: `tz_${tag}` }), /another email/);
+  await admin('allow_email', { email, username: `tc_${tag}` }); // can change until they join
   await createUser(email, 'password123');
   const c = client(await signIn(email, 'password123'));
   assert.deepEqual(await c('describe'), { me: null, help: 'https://zoox101.github.io/potluck/llms.txt' });
   await rejects(c('query', { sql: 'select 1' }), /claim a username/);
-  await rejects(c('claim_username', { name: 'public' }), /not available/);
-  await rejects(c('claim_username', { name: `ta_${tag}` }), /not available/);
   await rejects(c('create_table', { name: 'x' }), /claim a username/);
+  assert.equal(await c('claim_username'), `tc_${tag}`);
+  assert.equal(await c('claim_username'), `tc_${tag}`); // joining twice is harmless
+  assert.equal((await c('describe')).me, `tc_${tag}`);
+  await rejects(admin('allow_email', { email, username: 'someone_else' }), /already a member/);
+  const listed = (await admin('list_allowed_emails')).find((r) => r.email === email);
+  assert.deepEqual(listed, { email, username: `tc_${tag}`, joined: true });
 });
 
 test('owner creates a table; schema changes are owner-only', async () => {

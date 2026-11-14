@@ -67,13 +67,19 @@ async function render() {
   if (route === 'edit') { info = null; renderSignedOutTop(); return renderEditGuide(); }
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { info = null; renderSignedOutTop(); return route === 'view' ? renderLogin() : renderStart(); }
-  const described = await rpc('describe');
+  let described = await rpc('describe');
   if (!described.me) {
-    info = null;
-    topBar.className = '';
-    topBar.innerHTML = `<a href="#/" class="brand">Potluck</a><span><span class="muted">${esc(session.user.email)}</span> <button id="out">Sign out</button></span>`;
-    topBar.querySelector('#out').onclick = act(signOut);
-    return renderClaim();
+    // First sign-in: take the username the admin set when approving this email.
+    try {
+      await rpc('claim_username');
+      described = await rpc('describe');
+    } catch (err) {
+      info = null;
+      topBar.className = '';
+      topBar.innerHTML = `<a href="#/" class="brand">Potluck</a><span><span class="muted">${esc(session.user.email)}</span> <button id="out">Sign out</button></span>`;
+      topBar.querySelector('#out').onclick = act(signOut);
+      return renderJoinProblem(err);
+    }
   }
   info = { ...described, email: session.user.email };
   if (route === 'gui' && id) return renderGui(id);
@@ -229,20 +235,16 @@ function renderLogin() {
   });
 }
 
-function renderClaim() {
+// Signed in, but joining failed (e.g. the admin hasn't set a username for this email yet).
+function renderJoinProblem(err) {
   main.innerHTML = `
-    <form class="login">
-      <h2>Pick a username</h2>
-      <p class="muted">Your tables live under it, e.g. <code>will.places</code>. It can't be changed later.</p>
-      <input name="username" placeholder="username" autocapitalize="none" required>
-      <span class="muted">Lowercase letters, digits and _, starting with a letter.</span>
-      <button class="primary">Claim</button>
-    </form>`;
-  const form = main.querySelector('form');
-  form.onsubmit = act(async () => {
-    await rpc('claim_username', { name: form.elements.username.value.trim().toLowerCase() });
-    render();
-  });
+    <div class="login">
+      <h2>Almost there</h2>
+      <p class="error"></p>
+      <div class="row"><button id="retry">Try again</button></div>
+    </div>`;
+  main.querySelector('.error').textContent = err.message;
+  main.querySelector('#retry').onclick = act(render);
 }
 
 // ---------- signed-in pages ----------

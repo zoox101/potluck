@@ -15,6 +15,7 @@
   },
   "description": "Build web apps cooperatively with friends and their agents",
   "devDependencies": {
+    "nodemailer": "^6.9.14",
     "supabase": "^3.1.0"
   },
   "private": true,

@@ -73,7 +73,22 @@ test('the admin sets usernames when approving; members join with theirs', async 
   assert.equal((await c('describe')).me, `tc_${tag}`);
   await rejects(admin('allow_email', { email, username: 'someone_else' }), /already a member/);
   const listed = (await admin('list_allowed_emails')).find((r) => r.email === email);
-  assert.deepEqual(listed, { email, username: `tc_${tag}`, joined: true });
+  assert.deepEqual(listed, { email, username: `tc_${tag}`, joined: true, signed_in: true });
+});
+
+test('the admin can create a member with a first agent key before they sign in', async () => {
+  const email = `td_${tag}@example.com`;
+  emails.push(email);
+  await admin('allow_email', { email, username: `td_${tag}` });
+  await createUser(email);
+  const { username, key } = await admin('admin_add_member', { email });
+  assert.equal(username, `td_${tag}`);
+  assert.equal((await keyClient(key)('describe')).me, `td_${tag}`);
+  const listed = (await admin('list_allowed_emails')).find((r) => r.email === email);
+  assert.deepEqual([listed.joined, listed.signed_in], [true, false]);
+  assert.equal(await client(await signIn(email))('claim_username'), `td_${tag}`); // first sign-in keeps the account
+  await rejects(admin('admin_add_member', { email: `nobody_${tag}@example.com` }), /No account/);
+  await rejects(a('admin_add_member', { email }), /permission denied/);
 });
 
 test('owner creates a table; schema changes are owner-only', async () => {

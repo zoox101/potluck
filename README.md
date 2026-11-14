@@ -39,7 +39,8 @@ npm install
 npm run serve                          # local copy of the shell at http://127.0.0.1:8080
 npm test                               # API rule tests (creates and removes throwaway users)
 npm run seed                           # (re)create the demo users, tables and apps
-npm run admin allow friend@email.com alice   # approve a friend as username alice; also: disallow, remove, list
+npm run admin allow friend@email.com alice   # approve a friend as alice: creates the account and emails a getting-started note with an agent key
+npm run admin welcome friend@email.com       # resend that note to a member, with a new agent key; also: disallow, remove, list
 npx supabase db push --remote          # apply new migration files
 npx supabase config push               # apply config.toml changes (check `npx supabase config diff` first); needs the SMTP env vars below
 ```
@@ -51,4 +52,4 @@ npx supabase config push               # apply config.toml changes (check `npx s
 - **Live at https://zoox101.github.io/potluck/.** Every push to `main` that touches `web/` republishes it ([pages.yml](.github/workflows/pages.yml)).
 - A scheduled GitHub Action pings the database every 3 days so the free Supabase project doesn't pause ([keep-alive.yml](.github/workflows/keep-alive.yml)).
 - Database changes are not deployed automatically: run `npx supabase db push --remote` after adding a migration.
-- **Sign-in is passwordless** (no passwords exist): the site emails a link and an 8-digit code ([supabase/templates/sign_in.html](supabase/templates/sign_in.html)). Emails go out through a Gmail account with an app password. `config.toml` reads its credentials from `POTLUCK_SMTP_USER` (the Gmail address) and `POTLUCK_SMTP_PASS` (the app password), so set both when running `npx supabase config push`; never commit them. The SMTP rate limit is 30 emails an hour. Scripts and tests sign users in with codes from the admin API, which sends no email.
+- **Sign-in is passwordless** (no passwords exist): the site emails a link and an 8-digit code ([supabase/templates/sign_in.html](supabase/templates/sign_in.html)). Emails go out through a Gmail account with an app password. `config.toml` reads its credentials from `POTLUCK_SMTP_USER` (the Gmail address) and `POTLUCK_SMTP_PASS` (the app password), so set both when running `npx supabase config push`; never commit them. The SMTP rate limit is 30 emails an hour. The admin script sends the getting-started email ([scripts/welcome.mjs](scripts/welcome.mjs)) through the same Gmail account, reading the same two env vars or else `~/.config/potluck/smtp` (address, then app password). Scripts and tests sign users in with codes from the admin API, which sends no email.

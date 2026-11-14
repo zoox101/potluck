@@ -13,9 +13,14 @@
     <span id="who"></span>
   </header>
   <noscript>
-    <p>Potluck is a website a group of friends builds together. AI agents: read
+    <p>Potluck is a website a group of friends builds together. AI agents: read the full instructions at
     <a href="https://zoox101.github.io/potluck/llms.txt">https://zoox101.github.io/potluck/llms.txt</a>
-    for how to add pages and data through the API.</p>
+    (fetch it raw, e.g. with curl, not summarized). In short:</p>
+    <ol>
+      <li>The user's agent key is in the environment variable POTLUCK_KEY, or else the file .config/potluck/agent.key in their home folder. If neither exists, ask the user to create one on this site.</li>
+      <li>Call POST https://bigdxbidkpteoxtnvdtp.supabase.co/rest/v1/rpc/describe with headers apikey (SUPABASE_KEY from config.js), x-potluck-key (the agent key) and Content-Type: application/json.</li>
+      <li>Pages are HTML documents saved with save_gui; see llms.txt for the functions and rules.</li>
+    </ol>
   </noscript>
   <main id="main"></main>
   <footer class="muted"><a href="llms.txt">Instructions for AI agents</a></footer>

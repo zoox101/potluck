@@ -110,10 +110,15 @@ test('query is read-only and can join across users', async () => {
   assert.equal((await a('query', { sql: `select count(*)::int as n from ${T}` }))[0].n, 1);
 });
 
-test('GUIs: owner saves versions, others fork, schema changes are guarded', async () => {
+test('GUIs: anyone saves versions, only the owner deletes, schema changes are guarded', async () => {
   const gui = await a('save_gui', { name: 'Items', code: '<p>v1</p>', reads: [T] });
-  assert.equal((await a('save_gui', { id: gui.id, name: 'Items', code: '<p>v2</p>' })).version, 2);
-  await rejects(b('save_gui', { id: gui.id, name: 'Mine now', code: 'x' }), /fork it instead/);
+  assert.equal((await b('save_gui', { id: gui.id, name: 'Items', code: '<p>b edit</p>' })).version, 2);
+  const latest = await a('get_gui', { id: gui.id });
+  assert.deepEqual([latest.owner, latest.saved_by, latest.code], [`ta_${tag}`, `tb_${tag}`, '<p>b edit</p>']);
+  assert.equal((await a('describe')).guis.find((g) => g.id === gui.id).updated_by, `tb_${tag}`);
+  assert.equal((await a('get_gui', { id: gui.id, version: 1 })).saved_by, `ta_${tag}`);
+  assert.equal((await a('save_gui', { id: gui.id, name: 'Items', code: '<p>v2</p>' })).version, 3);
+  await rejects(b('save_gui', { id: '00000000-0000-0000-0000-000000000000', name: 'x', code: 'x' }), /not found/);
   await rejects(b('delete_gui', { id: gui.id }), /not yours/);
   const fork = await b('fork_gui', { id: gui.id });
   const forked = await b('get_gui', { id: fork.id });

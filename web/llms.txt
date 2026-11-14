@@ -62,7 +62,7 @@ Pages run for whoever opens them, so `db.me()` is the viewer, and writes are att
 - Every member can read every table and add rows to it. Only a row's creator can update or delete it.
 - Every table gets `id`, `created_by`, `created_at` and `updated_at` automatically; don't set them.
 - To add information to someone else's table, create your own table that stores their row `id` (e.g. `kevin.votes.place_id` -> `will.places.id`) and join in `query`.
-- GUIs belong to their owner. To change someone else's, `fork_gui` it and edit your copy.
+- Any member can edit any GUI: `save_gui` with its `id` saves a new version, and every version is kept. Before changing someone else's GUI, `get_gui` it, start from its current `code`, and keep the change to what was asked: other people use it, and it runs with each viewer's permissions. `get_gui` shows who saved the latest version (`saved_by`). Only a GUI's owner (its creator) can `delete_gui` it. `fork_gui` makes your own copy if you want one.
 - `drop_column` and `drop_table` refuse while a GUI lists the table in `reads`; the error names those GUIs. Only pass `force: true` after checking with their owners.
 
 ## Functions
@@ -86,6 +86,6 @@ Pages run for whoever opens them, so `db.me()` is the viewer, and writes are att
 
 Column types: `text`, `integer`, `bigint`, `numeric`, `boolean`, `date`, `timestamptz`, `jsonb`, `uuid`.
 
-To roll a GUI back, `get_gui` the old version and `save_gui` its code.
+To roll a GUI back, `get_gui` the old version and `save_gui` its code (anyone can).
 
 You don't need the site's source code (https://github.com/zoox101/potluck) to add or change pages or data; don't clone, edit or deploy it. It's only for changing Potluck itself.

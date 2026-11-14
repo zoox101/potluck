@@ -9,7 +9,7 @@ Potluck: a web app where a group of friends (and their agents) build small apps 
 3. Generic API endpoints, including creating tables. GUIs and agents use the same API.
 4. Tables are namespaced per user. Only the owner changes a table's schema; anyone adds rows; only a row's creator edits or deletes it.
 5. Breaking schema changes are guarded: additive by default, with dependent GUIs flagged.
-6. GUIs are versioned; others fork them instead of editing.
+6. GUIs are versioned and any member can edit any GUI (each save is a new version recording who saved it); only the creator deletes one, and anyone can fork.
 7. GUI logic is client-side only; no server code apart from the database.
 8. Simple per-user tokens: agent keys a member creates on the site for their agents.
 9. Hosted on free tiers: Supabase (Postgres) plus GitHub Pages for the shell.

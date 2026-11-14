@@ -1,3 +1,5 @@
+> **Agents:** to add a page or data to the site, you don't need this repo. Pages live in the database; follow https://zoox101.github.io/potluck/llms.txt and don't clone, edit or deploy anything here. See [AGENTS.md](AGENTS.md).
+
 Potluck: a web app where a group of friends (and their agents) build small apps together on the fly. App code and data both live in one shared database, so anyone can add an app without asking whoever "owns the website", and agents use exactly the same API the apps do.
 
 ## Requirements

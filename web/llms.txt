@@ -1,0 +1,89 @@
+# Potluck
+
+> Potluck (https://zoox101.github.io/potluck/) is a website a group of friends builds together. Its pages ("apps", called GUIs in the API) and their data live in one shared database. People and their agents add pages and data through the API below; nothing is deployed by hand.
+
+You are probably here because a person asked you to change the site, e.g. "add a new page to Potluck". You act as that person through their agent key.
+
+## 1. Find the agent key
+
+Look in this order and use the first one found:
+
+1. The environment variable `POTLUCK_KEY`.
+2. The file `.config/potluck/agent.key` in the user's home folder (`~/.config/potluck/agent.key` on macOS and Linux, `%USERPROFILE%\.config\potluck\agent.key` on Windows; `os.homedir()` / `Path.home()` resolve it on every OS).
+
+That file contains only the Potluck key (`pk_` followed by 48 hex characters); trim whitespace. Read nothing else from the user's machine for this. Never print or share the key.
+
+If there is no key, stop and ask the user to create one: sign in at https://zoox101.github.io/potluck/, click "New key" under "Agent keys", copy it, and save it with the command the site shows for their OS. Never ask for or use their password.
+
+## 2. Call the API
+
+Every call is `POST https://bigdxbidkpteoxtnvdtp.supabase.co/rest/v1/rpc/<function>` with a JSON body of named arguments and these headers:
+
+- `apikey`: the site's public key, the `SUPABASE_KEY` value in https://zoox101.github.io/potluck/config.js
+- `x-potluck-key`: the agent key
+- `Content-Type: application/json`
+
+```bash
+URL=https://bigdxbidkpteoxtnvdtp.supabase.co
+KEY=$(curl -s https://zoox101.github.io/potluck/config.js | sed -n "s/.*SUPABASE_KEY = '\(.*\)'.*/\1/p")
+AGENT_KEY=${POTLUCK_KEY:-$(cat ~/.config/potluck/agent.key)}
+curl -s "$URL/rest/v1/rpc/describe" -H "apikey: $KEY" -H "x-potluck-key: $AGENT_KEY" -H 'Content-Type: application/json' -d '{}'
+```
+
+**Start with `describe`.** It returns `me` (whose key this is; `null` means the key is missing, wrong or revoked), every table with its columns and which GUIs read it, and every GUI. Reuse existing tables before creating new ones. Errors come back as JSON with a `message` explaining what to fix.
+
+## 3. Add a page
+
+A page is one self-contained HTML document saved with `save_gui`. The site renders it in a sandboxed iframe with a `db` object already defined, and that is the page's only way to reach data (no keys or URLs in page code). External scripts and styles from CDNs work.
+
+1. If the page needs its own data, `create_table` under your username (e.g. `{"name": "packing_list", "columns": [{"name": "item", "type": "text", "required": true}]}` creates `<me>.packing_list`).
+2. Write the HTML using `db`.
+3. `save_gui` with `name`, `code`, a one-line `description`, and `reads` listing every table it reads. It returns `{id, version}`.
+4. Tell the user the page is at `https://zoox101.github.io/potluck/#/gui/<id>`. To change it later, `save_gui` again with the same `id` (each save is a new version).
+
+The `db` object inside a page:
+
+```js
+const rows = await db.query('select * from will.places');  // one read-only SELECT; joins across tables are fine
+await db.insert('will.places', { name: 'Taipei 101' });     // returns the new row
+await db.update('will.places', 3, { notes: 'Go at sunset' });
+await db.remove('will.places', 3);
+await db.createTable('votes', [{ name: 'place_id', type: 'bigint' }]);
+await db.addColumn('will.places', { name: 'rating', type: 'integer' });
+await db.describe(); await db.me();                          // me() is the viewer's username
+db.subscribe('will.places', ({ event, new: row, old }) => { /* live updates from everyone */ });
+```
+
+Pages run for whoever opens them, so `db.me()` is the viewer, and writes are attributed to the viewer.
+
+## Rules
+
+- Tables are named `owner.table`. You can only create tables under your own username, and only a table's owner changes its schema.
+- Every member can read every table and add rows to it. Only a row's creator can update or delete it.
+- Every table gets `id`, `created_by`, `created_at` and `updated_at` automatically; don't set them.
+- To add information to someone else's table, create your own table that stores their row `id` (e.g. `kevin.votes.place_id` -> `will.places.id`) and join in `query`.
+- GUIs belong to their owner. To change someone else's, `fork_gui` it and edit your copy.
+- `drop_column` and `drop_table` refuse while a GUI lists the table in `reads`; the error names those GUIs. Only pass `force: true` after checking with their owners.
+
+## Functions
+
+| Function | Arguments | Returns |
+|---|---|---|
+| `describe` | | `{me, tables, guis, help}` |
+| `create_table` | `name`, `columns`: `[{name, type, required?}]` | `owner.table` |
+| `add_column` | `table_name`, `column_spec`: `{name, type, required?}` | `owner.table` |
+| `drop_column` | `table_name`, `column_name`, `force?` | `owner.table` |
+| `drop_table` | `table_name`, `force?` | `owner.table` |
+| `insert_row` | `table_name`, `data` | the new row |
+| `insert_rows` | `table_name`, `rows` (array of objects; send at most ~200 per call) | number inserted |
+| `update_row` | `table_name`, `id`, `data` | the updated row |
+| `delete_row` | `table_name`, `id` | the deleted row |
+| `query` | `sql` (one read-only `SELECT`; use `owner.table` names) | array of rows |
+| `save_gui` | `name`, `code`, `description?`, `reads?`, `id?` (omit to create) | `{id, version}` |
+| `get_gui` | `id`, `version?` (default latest) | the GUI with its `code` and version count |
+| `fork_gui` | `id`, `name?` | `{id, version}` of your copy |
+| `delete_gui` | `id` | `id` |
+
+Column types: `text`, `integer`, `bigint`, `numeric`, `boolean`, `date`, `timestamptz`, `jsonb`, `uuid`.
+
+To roll a GUI back, `get_gui` the old version and `save_gui` its code. Source code and examples: https://github.com/zoox101/potluck

@@ -21,7 +21,7 @@ const rejects = (p, re) => assert.rejects(p, re);
 
 test('anonymous callers are refused', async () => {
   const anon = client();
-  assert.deepEqual(await anon('describe'), { me: null });
+  assert.deepEqual(await anon('describe'), { me: null, help: 'https://zoox101.github.io/potluck/llms.txt' });
   await rejects(anon('query', { sql: 'select 1' }), /claim a username/);
   await rejects(anon('create_table', { name: 'x' }), /claim a username/);
   await rejects(anon('allow_email', { email: 'x@example.com' }), /permission denied/);
@@ -59,7 +59,7 @@ test('usernames must be valid and free; non-members see nothing', async () => {
   await admin('allow_email', { email });
   await createUser(email, 'password123');
   const c = client(await signIn(email, 'password123'));
-  assert.deepEqual(await c('describe'), { me: null });
+  assert.deepEqual(await c('describe'), { me: null, help: 'https://zoox101.github.io/potluck/llms.txt' });
   await rejects(c('query', { sql: 'select 1' }), /claim a username/);
   await rejects(c('claim_username', { name: 'public' }), /not available/);
   await rejects(c('claim_username', { name: `ta_${tag}` }), /not available/);

@@ -1,14 +1,12 @@
 // Import the Taiwan Together trip (as returned by Full Auto's will.taiwan-trip/getTrip) through the
 // normal API with an agent key: creates <owner>.taiwan_places / <owner>.taiwan_votes and the Taiwan Trip GUI.
-//   POTLUCK_KEY_FILE=~/.config/potluck/agent.key node scripts/import-taiwan-trip.mjs trip.json [--replace]
+//   node scripts/import-taiwan-trip.mjs trip.json [--replace]   (key from $POTLUCK_KEY or ~/.config/potluck/agent.key)
 // --replace first drops those tables and the owner's existing "Taiwan Trip" GUI.
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { keyClient } from './api.mjs';
 
 const [tripFile, flag] = process.argv.slice(2);
-const keyFile = (process.env.POTLUCK_KEY_FILE ?? '~/.config/potluck/agent.key').replace(/^~/, homedir());
-const rpc = keyClient(readFileSync(keyFile, 'utf8').trim());
+const rpc = keyClient();
 const { places } = JSON.parse(readFileSync(tripFile, 'utf8')).result;
 const code = readFileSync(new URL('../examples/taiwan-trip.html', import.meta.url), 'utf8');
 

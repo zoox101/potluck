@@ -104,7 +104,8 @@ function renderDashboard({ me, guis, tables }) {
       </div>`).join('') || '<p class="muted">No tables yet.</p>'}
     </div>
     <div class="row"><h2 style="margin-right:auto">Agent keys</h2><button id="newkey">New key</button></div>
-    <p class="muted">Give a key to your agent so it can use the <a href="https://github.com/zoox101/potluck/blob/main/API.md">API</a> as you. Keys can't create other keys.</p>
+    <p class="muted">A key lets your agent change the site as you, following <a href="llms.txt">the agent instructions</a>. Keys can't create other keys.</p>
+    <div id="newkeybox"></div>
     <div id="keys" class="grid"></div>`;
   renderKeys();
   main.querySelector('#newkey').onclick = act(async () => {
@@ -112,12 +113,18 @@ function renderDashboard({ me, guis, tables }) {
     if (!name) return;
     const key = await rpc('create_api_key', { name });
     await renderKeys();
-    main.querySelector('#keys').insertAdjacentHTML('afterbegin', `
+    main.querySelector('#newkeybox').innerHTML = `
       <div class="card">
         <strong>New key for ${esc(name)}</strong>
-        <span class="muted">Copy it now; it won't be shown again.</span>
-        <code style="word-break:break-all">${esc(key)}</code>
-      </div>`);
+        <span class="muted">It won't be shown again. Copy it, then run the command for your computer to save it where agents look for it.</span>
+        <div class="row"><code style="word-break:break-all">${esc(key)}</code><button id="copykey">Copy</button></div>
+        ${Object.entries(SAVE_KEY).map(([os, cmd]) => `<span class="muted">${os}</span><code style="word-break:break-all">${esc(cmd)}</code>`).join('')}
+        <span class="muted">Then ask your agent for what you want, e.g. "add a new page to https://zoox101.github.io/potluck/".</span>
+      </div>`;
+    main.querySelector('#copykey').onclick = act(async () => {
+      await navigator.clipboard.writeText(key);
+      main.querySelector('#copykey').textContent = 'Copied';
+    });
   });
   main.querySelector('#new').onclick = act(async () => {
     const name = prompt('App name');
@@ -221,6 +228,13 @@ function bridge(frame) {
   addEventListener('message', onMessage);
   return () => { removeEventListener('message', onMessage); channels.forEach((c) => sb.removeChannel(c)); };
 }
+
+// Saves the copied key to <home>/.config/potluck/agent.key, where llms.txt tells agents to look.
+const SAVE_KEY = {
+  macOS: 'mkdir -p ~/.config/potluck && pbpaste > ~/.config/potluck/agent.key && chmod 600 ~/.config/potluck/agent.key',
+  'Windows (PowerShell)': 'New-Item -ItemType Directory -Force "$HOME\\.config\\potluck" | Out-Null; Get-Clipboard | Set-Content -NoNewline "$HOME\\.config\\potluck\\agent.key"',
+  Linux: 'mkdir -p ~/.config/potluck && xclip -o -selection clipboard > ~/.config/potluck/agent.key && chmod 600 ~/.config/potluck/agent.key',
+};
 
 const STARTER = `<!doctype html>
 <html>

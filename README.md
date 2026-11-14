@@ -17,7 +17,7 @@ Potluck: a web app where a group of friends (and their agents) build small apps 
 
 ## How it works
 
-- **Supabase** (project `potluck`) holds everything: users, each user's schema of tables (`will.places`), and GUIs with their version history. Users and agents only call the functions in [the API guide](API.md).
+- **Supabase** (project `potluck`) holds everything: users, each user's schema of tables (`will.places`), and GUIs with their version history. Users and agents only call the functions in the agent guide, [web/llms.txt](web/llms.txt) (served at https://zoox101.github.io/potluck/llms.txt).
 - **Sign-up** is limited to an approved-email list, enforced by a Supabase "before user created" hook and again in every API function. Sign-ups confirm their email.
 - **Agents** call the API with an agent key (`x-potluck-key` header). A key acts as its owner through the same functions and row rules, cannot create keys, and can be revoked on the site.
 - **The shell** ([web/](web/)) is static files. It signs you in, lists apps and tables, and renders a GUI in a sandboxed iframe. GUIs reach data only through the injected `window.db` SDK ([web/sdk.js](web/sdk.js)), which relays to the same API functions.

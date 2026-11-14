@@ -1,6 +1,8 @@
 // Minimal REST client, used by the scripts and tests (and a model for agents).
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { SUPABASE_URL, SUPABASE_KEY } from '../web/config.js';
 
 const root = new URL('..', import.meta.url);
@@ -21,8 +23,16 @@ async function request(path, key, token, body, headers = {}) {
 export const client = (token) => (fn, args = {}) => request(`/rest/v1/rpc/${fn}`, SUPABASE_KEY, token, args);
 
 // The same, authenticated with an agent key (how agents call the API).
-export const keyClient = (agentKey) => (fn, args = {}) =>
+export const keyClient = (agentKey = findAgentKey()) => (fn, args = {}) =>
   request(`/rest/v1/rpc/${fn}`, SUPABASE_KEY, null, args, { 'x-potluck-key': agentKey });
+
+// The standard key location from llms.txt: $POTLUCK_KEY, else <home>/.config/potluck/agent.key.
+export function findAgentKey() {
+  if (process.env.POTLUCK_KEY) return process.env.POTLUCK_KEY.trim();
+  try { return readFileSync(join(homedir(), '.config', 'potluck', 'agent.key'), 'utf8').trim(); } catch {
+    throw new Error('No agent key: set POTLUCK_KEY or save one to ~/.config/potluck/agent.key (create it on the site under "Agent keys")');
+  }
+}
 
 export async function signIn(email, password) {
   return (await request('/auth/v1/token?grant_type=password', SUPABASE_KEY, null, { email, password })).access_token;

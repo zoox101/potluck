@@ -113,3 +113,4 @@ button .ico { width: 16px; height: 16px; vertical-align: -3px; margin-right: 2px
 .is-hidden:hover, .is-hidden.active, .is-hidden.hl { opacity: .85; }
 .app-card.is-hidden { border-style: dashed; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.notice { margin: 0; padding: 8px 10px; border-radius: 6px; background: color-mix(in srgb, #e0a021 18%, var(--panel)); }

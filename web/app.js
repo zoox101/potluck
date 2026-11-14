@@ -2,6 +2,16 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=dev';
 import { SDK, ALLOWED } from './sdk.js?v=dev';
 
+// Sign-in links come back as ?login=<email>, plus #error_code=... when the link had expired or was
+// already used. Note both before Supabase reads the URL, then tidy the address bar.
+const arrival = (() => {
+  const login = new URLSearchParams(location.search).get('login') || '';
+  const failed = /(^|&)error(_code)?=/.test(location.hash.slice(1));
+  if (login || failed) history.replaceState(null, '', location.pathname + (failed ? '#/view' : location.hash));
+  return { login, expired: failed };
+})();
+const loginRedirect = (email) => `${location.origin}${location.pathname}?login=${encodeURIComponent(email)}`;
+
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const main = document.getElementById('main');
 const topBar = document.getElementById('top');
@@ -66,7 +76,15 @@ async function render() {
   const [, route, id] = location.hash.split('/');
   if (route === 'edit') { info = null; renderSignedOutTop(); return renderEditGuide(); }
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { info = null; renderSignedOutTop(); return route === 'view' ? renderLogin() : renderStart(); }
+  if (!session) {
+    info = null;
+    renderSignedOutTop();
+    if (arrival.expired) {
+      arrival.expired = false;
+      return renderLogin(arrival.login, 'That sign-in link has expired or was already used. Tap the button for a new one.');
+    }
+    return route === 'view' ? renderLogin() : renderStart();
+  }
   let described = await rpc('describe');
   if (!described.me) {
     // First sign-in: take the username the admin set when approving this email.
@@ -212,11 +230,12 @@ async function renderEditGuide() {
 }
 
 // Passwordless sign-in: email a link plus a code; either one signs you in.
-function renderLogin(email = '') {
+function renderLogin(email = '', notice = '') {
   main.innerHTML = `
     <form class="login">
       <a href="#/" class="muted">&larr; Back</a>
       <h2>Sign in to view the dashboard</h2>
+      ${notice ? `<p class="notice">${esc(notice)}</p>` : ''}
       <p class="muted" style="margin:0">No password needed: we'll email you a sign-in link and code. Your email has to be approved by the group admin.</p>
       <input name="email" type="email" placeholder="Email" required autocomplete="email" value="${esc(email)}">
       <button class="primary">Email me a sign-in link</button>
@@ -226,7 +245,7 @@ function renderLogin(email = '') {
     const to = form.email.value.trim();
     form.querySelector('button').disabled = true;
     try {
-      const { error } = await sb.auth.signInWithOtp({ email: to, options: { emailRedirectTo: location.origin + location.pathname } });
+      const { error } = await sb.auth.signInWithOtp({ email: to, options: { emailRedirectTo: loginRedirect(to) } });
       if (error) throw error;
     } finally { form.querySelector('button').disabled = false; }
     renderCode(to);
@@ -252,7 +271,7 @@ function renderCode(email) {
   });
   main.querySelector('#other').onclick = act(() => renderLogin(email));
   main.querySelector('#again').onclick = act(async () => {
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: loginRedirect(email) } });
     if (error) throw error;
     showError(new Error('Sent a new code. Use the newest email.'));
   });

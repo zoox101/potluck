@@ -237,7 +237,7 @@ max_frequency = "1m0s"
 # Number of characters used in the email OTP.
 otp_length = 8
 # Number of seconds before the email OTP expires (defaults to 1 hour).
-otp_expiry = 3600
+otp_expiry = 86400
 
 # Sign-in emails go out through a Gmail account with an app password. The credentials come from
 # the environment when running `npx supabase config push` (see README); never commit them.

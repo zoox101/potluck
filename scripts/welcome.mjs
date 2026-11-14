@@ -35,7 +35,7 @@ Potluck is a site where our group builds and shares small web apps: ${SITE}
 
 SIGN IN WITH ONE CLICK
 ${link}
-(This link works once and expires an hour after this email was sent. After that, sign in as below.)
+(This link works once and expires 24 hours after this email was sent. If it has expired, it opens the sign-in page with your email filled in: tap the button there for a new link.)
 
 SIGNING IN LATER
 1. Open ${SITE} and tap "View dashboard".
@@ -61,7 +61,7 @@ bottom of the menu) and create a new one there.
   <h2 style="margin:0 0 8px">Welcome to Potluck, ${esc(username)}!</h2>
   <p style="margin:0 0 20px">Potluck is a site where our group builds and shares small web apps: <a href="${SITE}">${SITE}</a></p>
   <p style="margin:0 0 6px"><a href="${esc(link)}" style="display:inline-block;background:#2f6fd6;color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-weight:600">Sign in to Potluck</a></p>
-  <p style="margin:0 0 20px;color:#6b6b66;font-size:13px">One click, no password. The button works once and expires an hour after this email was sent; after that, sign in as below.</p>
+  <p style="margin:0 0 20px;color:#6b6b66;font-size:13px">One click, no password. The button works once and expires 24 hours after this email was sent. If it has expired, it opens the sign-in page with your email filled in: tap the button there for a new link.</p>
   <h3 style="margin:0 0 6px;font-size:16px">Signing in later</h3>
   <ol style="margin:0 0 20px;padding-left:20px">
     <li>Open <a href="${SITE}">Potluck</a> and tap <b>View dashboard</b>.</li>

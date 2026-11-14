@@ -36,9 +36,11 @@ export function findAgentKey() {
 
 // Sign-in is passwordless. Scripts sign a user in with a one-time code the admin API generates
 // (no email is sent) and return their access token.
-// A one-click sign-in link for the site (works once, expires with the OTP; sends no email).
-export async function signInLink(email, redirectTo = 'https://zoox101.github.io/potluck/') {
-  return (await request('/auth/v1/admin/generate_link', secretKey(), null, { type: 'magiclink', email, redirect_to: redirectTo })).action_link;
+// A one-click sign-in link for the site (works once, expires with the OTP; sends no email). The return
+// address carries the email so an expired link can open the sign-in page with it filled in.
+export async function signInLink(email, site = 'https://zoox101.github.io/potluck/') {
+  const redirect_to = `${site}?login=${encodeURIComponent(email)}`;
+  return (await request('/auth/v1/admin/generate_link', secretKey(), null, { type: 'magiclink', email, redirect_to })).action_link;
 }
 
 export async function signIn(email) {

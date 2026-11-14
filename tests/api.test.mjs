@@ -87,6 +87,10 @@ test('the admin can create a member with a first agent key before they sign in',
   const listed = (await admin('list_allowed_emails')).find((r) => r.email === email);
   assert.deepEqual([listed.joined, listed.signed_in], [true, false]);
   assert.equal(await client(await signIn(email))('claim_username'), `td_${tag}`); // first sign-in keeps the account
+  const again = await admin('admin_add_member', { email }); // resending replaces the welcome key
+  assert.equal((await keyClient(again.key)('describe')).me, `td_${tag}`);
+  await rejects(keyClient(key)('query', { sql: 'select 1' }), /claim a username/);
+  assert.equal((await admin('admin_list_keys', { email })).filter((k) => k.name === 'Welcome key').length, 1);
   await rejects(admin('admin_add_member', { email: `nobody_${tag}@example.com` }), /No account/);
   await rejects(a('admin_add_member', { email }), /permission denied/);
 });

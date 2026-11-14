@@ -1,7 +1,7 @@
 // Admin commands for the linked project (needs `npx supabase login`):
 //   npm run admin allow friend@example.com alice   approve an email as username alice, create the account and
 //                                                  email a getting-started note with an agent key
-//   npm run admin welcome friend@example.com       email an existing member the note again, with a new agent key
+//   npm run admin welcome friend@example.com       email an existing member the note again; the new key replaces their old welcome key
 //   npm run admin disallow friend@example.com      withdraw approval
 //   npm run admin remove friend@example.com        delete a user and everything they created
 //   npm run admin list                             show approved emails, usernames and who has signed in

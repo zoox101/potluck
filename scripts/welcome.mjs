@@ -27,13 +27,17 @@ const saveCommands = (key) => [
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-export function welcomeEmail({ email, username, key }) {
+export function welcomeEmail({ email, username, key, link }) {
   const cmds = saveCommands(key);
   const text = `Welcome to Potluck, ${username}!
 
 Potluck is a site where our group builds and shares small web apps: ${SITE}
 
-SIGNING IN
+SIGN IN WITH ONE CLICK
+${link}
+(This link works once and expires an hour after this email was sent. After that, sign in as below.)
+
+SIGNING IN LATER
 1. Open ${SITE} and tap "View dashboard".
 2. Enter this email address (${email}). There's no password.
 3. We'll email you a sign-in link and code. Tap the link, or type the code on the page.
@@ -56,7 +60,9 @@ bottom of the menu) and create a new one there.
   const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1d1d1b;line-height:1.5">
   <h2 style="margin:0 0 8px">Welcome to Potluck, ${esc(username)}!</h2>
   <p style="margin:0 0 20px">Potluck is a site where our group builds and shares small web apps: <a href="${SITE}">${SITE}</a></p>
-  <h3 style="margin:0 0 6px;font-size:16px">Signing in</h3>
+  <p style="margin:0 0 6px"><a href="${esc(link)}" style="display:inline-block;background:#2f6fd6;color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-weight:600">Sign in to Potluck</a></p>
+  <p style="margin:0 0 20px;color:#6b6b66;font-size:13px">One click, no password. The button works once and expires an hour after this email was sent; after that, sign in as below.</p>
+  <h3 style="margin:0 0 6px;font-size:16px">Signing in later</h3>
   <ol style="margin:0 0 20px;padding-left:20px">
     <li>Open <a href="${SITE}">Potluck</a> and tap <b>View dashboard</b>.</li>
     <li>Enter this email address (${esc(email)}). There's no password.</li>
@@ -76,9 +82,9 @@ bottom of the menu) and create a new one there.
   return { subject: 'Welcome to Potluck', text, html };
 }
 
-export async function sendWelcome({ email, username, key }) {
+export async function sendWelcome({ email, username, key, link }) {
   const { user, pass } = smtpCredentials();
   const transport = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 587, secure: false, auth: { user, pass } });
-  const { subject, text, html } = welcomeEmail({ email, username, key });
+  const { subject, text, html } = welcomeEmail({ email, username, key, link });
   await transport.sendMail({ from: { name: 'Potluck', address: user }, to: email, subject, text, html });
 }

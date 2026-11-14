@@ -6,7 +6,7 @@
 //   npm run admin remove friend@example.com        delete a user and everything they created
 //   npm run admin list                             show approved emails, usernames and who has signed in
 // Emails go out through the site's Gmail account; see scripts/welcome.mjs for where its credentials live.
-import { admin, createUser } from './api.mjs';
+import { admin, createUser, signInLink } from './api.mjs';
 import { sendWelcome } from './welcome.mjs';
 
 const [command, email, username] = process.argv.slice(2);
@@ -16,7 +16,8 @@ const entry = async (e) => (await admin('list_allowed_emails')).find((r) => r.em
 // Create (or reuse) the member's account, give it a new agent key, and email the getting-started note.
 async function welcome(to) {
   const member = await admin('admin_add_member', { email: to });
-  await sendWelcome({ email: to.trim().toLowerCase(), username: member.username, key: member.key });
+  const link = await signInLink(to.trim().toLowerCase());
+  await sendWelcome({ email: to.trim().toLowerCase(), username: member.username, key: member.key, link });
   console.log(`welcome: emailed ${to} (${member.username}) sign-in instructions and a new agent key`);
 }
 

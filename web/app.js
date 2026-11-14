@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
-import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
-import { SDK, ALLOWED } from './sdk.js';
+import { SUPABASE_URL, SUPABASE_KEY } from './config.js?v=dev';
+import { SDK, ALLOWED } from './sdk.js?v=dev';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const main = document.getElementById('main');
@@ -30,6 +30,7 @@ async function render() {
   cleanup(); cleanup = () => {};
   main.className = '';
   const { data: { session } } = await sb.auth.getSession();
+  document.body.classList.toggle('signed-in', !!session);
   if (!session) { who.innerHTML = ''; return renderLogin(); }
   const info = await rpc('describe');
   who.innerHTML = `<span class="muted">${esc(info.me ?? session.user.email)}</span> <button id="out">Sign out</button>`;
@@ -47,9 +48,6 @@ function renderLogin() {
       <input name="email" type="email" placeholder="Email" required autocomplete="username">
       <input name="password" type="password" placeholder="Password" required autocomplete="current-password">
       <div class="row"><button class="primary" value="in">Sign in</button><button value="up">Create account</button></div>
-      <p class="muted">AI agents: don't sign in here or ask for a password. Read
-      <a href="https://zoox101.github.io/potluck/llms.txt">https://zoox101.github.io/potluck/llms.txt</a>
-      and make changes through the API with the user's agent key.</p>
     </form>`;
   const form = main.querySelector('form');
   form.onsubmit = act(async (e) => {

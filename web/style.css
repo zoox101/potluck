@@ -10,7 +10,9 @@ body { margin: 0; font: 15px/1.45 system-ui, sans-serif; background: var(--bg); 
 header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
 .brand { font-weight: 600; color: var(--text); text-decoration: none; }
 main { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 16px; max-width: 1000px; width: 100%; margin: 0 auto; }
-main.full { max-width: none; padding: 0; gap: 0; }
+main:has(> #main.full) { max-width: none; padding: 0; gap: 0; }
+#main { flex: 1; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+#main.full { gap: 0; }
 h2 { font-size: 16px; margin: 8px 0 4px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
@@ -28,5 +30,5 @@ form.login { max-width: 320px; display: flex; flex-direction: column; gap: 8px; 
 iframe { flex: 1; width: 100%; border: 0; background: #fff; }
 .source { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
 code { font-size: 13px; }
-footer { padding: 8px 16px; text-align: center; }
-main.full ~ footer { display: none; }
+#agent-note { text-align: center; }
+body.signed-in #agent-note { display: none; }

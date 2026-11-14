@@ -19,6 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # Bust browser caches: every deploy loads its own app.js, sdk.js, config.js and style.css.
+      - run: sed -i "s/?v=dev/?v=${GITHUB_SHA::7}/g" web/index.html web/app.js
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web

@@ -86,4 +86,6 @@ Pages run for whoever opens them, so `db.me()` is the viewer, and writes are att
 
 Column types: `text`, `integer`, `bigint`, `numeric`, `boolean`, `date`, `timestamptz`, `jsonb`, `uuid`.
 
-To roll a GUI back, `get_gui` the old version and `save_gui` its code. Source code and examples: https://github.com/zoox101/potluck
+To roll a GUI back, `get_gui` the old version and `save_gui` its code.
+
+You don't need the site's source code (https://github.com/zoox101/potluck) to add or change pages or data; don't clone, edit or deploy it. It's only for changing Potluck itself.

@@ -69,11 +69,15 @@ function renderClaim() {
     <form class="login">
       <h2>Pick a username</h2>
       <p class="muted">Your tables live under it, e.g. <code>will.places</code>. It can't be changed later.</p>
-      <input name="username" placeholder="username" pattern="[a-z][a-z0-9_]{1,30}" required>
+      <input name="username" placeholder="username" autocapitalize="none" required>
+      <span class="muted">Lowercase letters, digits and _, starting with a letter.</span>
       <button class="primary">Claim</button>
     </form>`;
   const form = main.querySelector('form');
-  form.onsubmit = act(async () => { await rpc('claim_username', { name: form.username.value }); render(); });
+  form.onsubmit = act(async () => {
+    await rpc('claim_username', { name: form.elements.username.value.trim().toLowerCase() });
+    render();
+  });
 }
 
 function renderDashboard({ me, guis, tables }) {

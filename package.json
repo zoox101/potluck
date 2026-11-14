@@ -1,0 +1,20 @@
+{
+  "name": "group_app_builder",
+  "version": "1.0.0",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "start": "supabase start && scripts/config.sh",
+    "stop": "supabase stop",
+    "reset": "supabase db reset && node scripts/seed.mjs",
+    "serve": "python3 -m http.server 8080 -d web",
+    "test": "node --test tests/"
+  },
+  "description": "Build web apps cooperatively with friends and their agents",
+  "devDependencies": {
+    "supabase": "^3.1.0"
+  },
+  "private": true,
+  "type": "module"
+}

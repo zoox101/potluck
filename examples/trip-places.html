@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Trip Places</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 16px; max-width: 640px; margin: auto; color: #1d1d1b; }
+    li { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid #eee; }
+    li span { flex: 1; }
+    small { color: #777; }
+    form { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <h1>Trip Places</h1>
+  <ul id="list"></ul>
+  <form id="add">
+    <input name="name" placeholder="Place" required>
+    <input name="city" placeholder="City">
+    <button>Add</button>
+  </form>
+  <p id="error" style="color:#c43c3c"></p>
+  <script>
+    const list = document.getElementById('list');
+    const fail = (e) => (document.getElementById('error').textContent = e.message);
+
+    async function load() {
+      const rows = await db.query(`
+        select p.id, p.name, p.city, coalesce(sum(v.vote), 0) as votes
+        from will.places p left join kevin.votes v on v.place_id = p.id
+        group by p.id order by votes desc, p.name`);
+      list.innerHTML = '';
+      for (const p of rows) {
+        const li = document.createElement('li');
+        li.innerHTML = '<span></span><small></small><button>+1</button>';
+        li.querySelector('span').textContent = p.name;
+        li.querySelector('small').textContent = `${p.city ?? ''} · ${p.votes} votes`;
+        li.querySelector('button').onclick = () =>
+          db.insert('kevin.votes', { place_id: p.id, vote: 1 }).catch(fail);
+        list.append(li);
+      }
+    }
+
+    document.getElementById('add').onsubmit = (e) => {
+      e.preventDefault();
+      const f = e.target, { name, city } = f.elements;
+      db.insert('will.places', { name: name.value, city: city.value || null }).then(() => f.reset()).catch(fail);
+    };
+
+    db.subscribe('will.places', load);
+    db.subscribe('kevin.votes', load);
+    load().catch(fail);
+  </script>
+</body>
+</html>

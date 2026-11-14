@@ -30,5 +30,3 @@ form.login { max-width: 320px; display: flex; flex-direction: column; gap: 8px; 
 iframe { flex: 1; width: 100%; border: 0; background: #fff; }
 .source { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
 code { font-size: 13px; }
-#agent-note { text-align: center; }
-body.signed-in #agent-note { display: none; }

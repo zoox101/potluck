@@ -29,22 +29,52 @@ function showError(err) {
 async function render() {
   cleanup(); cleanup = () => {};
   main.className = '';
+  const [, route, id] = location.hash.split('/');
+  if (route === 'edit') return renderEditGuide();
   const { data: { session } } = await sb.auth.getSession();
-  document.body.classList.toggle('signed-in', !!session);
-  if (!session) { who.innerHTML = ''; return renderLogin(); }
+  if (!session) { who.innerHTML = ''; return route === 'view' ? renderLogin() : renderStart(); }
   const info = await rpc('describe');
   who.innerHTML = `<span class="muted">${esc(info.me ?? session.user.email)}</span> <button id="out">Sign out</button>`;
   document.getElementById('out').onclick = act(async () => { await sb.auth.signOut(); location.hash = '#/'; render(); });
   if (!info.me) return renderClaim();
-  const [, route, id] = location.hash.split('/');
   if (route === 'gui' && id) return renderGui(id, info.me);
   renderDashboard(info);
+}
+
+// Two ways in: people view the dashboard by signing in; editing goes through the API.
+function renderStart() {
+  main.innerHTML = `
+    <h2>Potluck</h2>
+    <p>A dashboard of apps that a group of friends builds together. There are two ways to use it:</p>
+    <div class="grid">
+      <div class="card">
+        <strong>View dashboard</strong>
+        <span>Open and use the apps. Requires signing in with an email and password.</span>
+        <div class="row"><a href="#/view"><button>View dashboard</button></a></div>
+      </div>
+      <div class="card">
+        <strong>Edit dashboard</strong>
+        <span>Add or change apps and their data, e.g. "create a new todo app". Done through the Potluck API with an agent key; no sign-in or password involved.</span>
+        <div class="row"><a href="#/edit"><button>Edit dashboard</button></a></div>
+      </div>
+    </div>`;
+}
+
+// The editing guide (llms.txt), shown in the page so the edit route is self-explanatory.
+async function renderEditGuide() {
+  main.innerHTML = `
+    <div class="row"><a href="#/"><button>&larr; Back</button></a><h2 style="margin:0">Edit dashboard</h2></div>
+    <p>Apps and data are added and changed through the Potluck API with an agent key, as described below.
+    The same guide is at <a href="llms.txt">https://zoox101.github.io/potluck/llms.txt</a>.</p>
+    <pre id="guide" class="card" style="white-space:pre-wrap;margin:0">Loading the guide...</pre>`;
+  main.querySelector('#guide').textContent = await fetch('llms.txt').then((r) => r.text());
 }
 
 function renderLogin() {
   main.innerHTML = `
     <form class="login">
-      <h2>Sign in</h2>
+      <a href="#/" class="muted">&larr; Back</a>
+      <h2>Sign in to view the dashboard</h2>
       <input name="email" type="email" placeholder="Email" required autocomplete="username">
       <input name="password" type="password" placeholder="Password" required autocomplete="current-password">
       <div class="row"><button class="primary" value="in">Sign in</button><button value="up">Create account</button></div>

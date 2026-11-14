@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Potluck</title>
   <link rel="stylesheet" href="style.css?v=dev">
-  <meta name="description" content="Potluck: a website friends build together. AI agents: add pages and data through the API with the user's agent key; read https://zoox101.github.io/potluck/llms.txt instead of signing in.">
+  <meta name="description" content="Potluck: a dashboard of apps a group of friends builds together. View it by signing in; edit it (add or change apps and data) through the Potluck API with an agent key, as described at https://zoox101.github.io/potluck/llms.txt.">
   <link rel="help" type="text/markdown" href="llms.txt" title="Instructions for AI agents">
 </head>
 <body>
@@ -14,7 +14,8 @@
     <span id="who"></span>
   </header>
   <noscript>
-    <p>Potluck is a website a group of friends builds together. AI agents: read the full instructions at
+    <p>Potluck is a dashboard of apps a group of friends builds together. Viewing it requires signing in (and JavaScript).
+    Editing it (adding or changing apps and data) is done through the Potluck API with an agent key; the full guide is at
     <a href="https://zoox101.github.io/potluck/llms.txt">https://zoox101.github.io/potluck/llms.txt</a>
     (fetch it raw, e.g. with curl, not summarized). In short:</p>
     <ol>
@@ -24,9 +25,6 @@
     </ol>
   </noscript>
   <main>
-    <p id="agent-note" class="muted">AI agents: don't sign in here or ask for a password. Read
-    <a href="https://zoox101.github.io/potluck/llms.txt">https://zoox101.github.io/potluck/llms.txt</a>
-    and make changes through the API with the user's agent key.</p>
     <div id="main"></div>
   </main>
   <script type="module" src="app.js?v=dev"></script>

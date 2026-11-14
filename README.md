@@ -27,8 +27,7 @@ Needs Node. The Supabase CLI is a dev dependency; sign it in once with `npx supa
 
 ```bash
 npm install
-npm run config                         # point web/config.js at the linked project
-npm run serve                          # shell at http://127.0.0.1:8080
+npm run serve                          # local copy of the shell at http://127.0.0.1:8080
 npm test                               # API rule tests (creates and removes throwaway users)
 npm run seed                           # (re)create the demo users, tables and apps
 npm run admin allow friend@email.com   # approve a friend; also: disallow, remove, list
@@ -38,6 +37,8 @@ npx supabase config push               # apply config.toml changes (check `npx s
 
 Demo users `demo_alex`, `demo_sam` and `demo_jo` sign in as `<name>@example.com` with password `password123`; remove them with `npm run admin remove <email>`. Admin commands use the project's secret key through the CLI and never print it.
 
-## Not done yet
+## Deployment
 
-- GitHub Pages for `web/` (then update `site_url` in config.toml), and a scheduled GitHub Actions ping so the free project doesn't pause.
+- **Live at https://zoox101.github.io/potluck/.** Every push to `main` that touches `web/` republishes it ([pages.yml](.github/workflows/pages.yml)).
+- A scheduled GitHub Action pings the database every 3 days so the free Supabase project doesn't pause ([keep-alive.yml](.github/workflows/keep-alive.yml)).
+- Database changes are not deployed automatically: run `npx supabase db push --remote` after adding a migration.

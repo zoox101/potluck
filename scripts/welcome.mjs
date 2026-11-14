@@ -29,55 +29,32 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 export function welcomeEmail({ email, username, key, link }) {
   const cmds = saveCommands(key);
+  const ask = `Add a page to ${SITE} that lists our favorite restaurants.`;
   const text = `Welcome to Potluck, ${username}!
 
-Potluck is a site where our group builds and shares small web apps: ${SITE}
+Sign in: ${link}
 
-SIGN IN WITH ONE CLICK
-${link}
-(This link works once and expires 24 hours after this email was sent. If it has expired, it opens the sign-in page with your email filled in: tap the button there for a new link.)
-
-SIGNING IN LATER
-1. Open ${SITE} and tap "View dashboard".
-2. Enter this email address (${email}). There's no password.
-3. We'll email you a sign-in link and code. Tap the link, or type the code on the page.
-You stay signed in on that device until you sign out.
+Next time, sign in at ${SITE} with ${email}.
 
 YOUR AGENT KEY
-Your AI agent (Claude Code, Codex, ...) can add and change apps for you with this key:
-
-  ${key}
-
-Save it on your computer with the command for your system:
+${key}
 ${cmds.map(([os, cmd]) => `\n${os}:\n  ${cmd}`).join('\n')}
 
-Then ask your agent something like: "Add a page to ${SITE} that lists our favorite restaurants."
-Agents find the instructions at ${SITE}llms.txt.
+Then ask your agent: "${ask}"
 
-The key acts as you, so keep it private. If it ever leaks, revoke it under Settings (the gear at the
-bottom of the menu) and create a new one there.
+Keep the key private.
 `;
+  const code = 'background:#f2f1ed;padding:8px;border-radius:6px;white-space:pre-wrap;word-break:break-all;font-size:12px';
   const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1d1d1b;line-height:1.5">
-  <h2 style="margin:0 0 8px">Welcome to Potluck, ${esc(username)}!</h2>
-  <p style="margin:0 0 20px">Potluck is a site where our group builds and shares small web apps: <a href="${SITE}">${SITE}</a></p>
-  <p style="margin:0 0 6px"><a href="${esc(link)}" style="display:inline-block;background:#2f6fd6;color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-weight:600">Sign in to Potluck</a></p>
-  <p style="margin:0 0 20px;color:#6b6b66;font-size:13px">One click, no password. The button works once and expires 24 hours after this email was sent. If it has expired, it opens the sign-in page with your email filled in: tap the button there for a new link.</p>
-  <h3 style="margin:0 0 6px;font-size:16px">Signing in later</h3>
-  <ol style="margin:0 0 20px;padding-left:20px">
-    <li>Open <a href="${SITE}">Potluck</a> and tap <b>View dashboard</b>.</li>
-    <li>Enter this email address (${esc(email)}). There's no password.</li>
-    <li>We'll email you a sign-in link and code. Tap the link, or type the code on the page.</li>
-  </ol>
-  <h3 style="margin:0 0 6px;font-size:16px">Your agent key</h3>
-  <p style="margin:0 0 8px">Your AI agent (Claude Code, Codex, ...) can add and change apps for you with this key:</p>
-  <p style="margin:0 0 12px"><code style="background:#f2f1ed;padding:6px 8px;border-radius:6px;word-break:break-all">${esc(key)}</code></p>
-  <p style="margin:0 0 6px">Save it on your computer with the command for your system:</p>
+  <h2 style="margin:0 0 16px">Welcome to Potluck, ${esc(username)}!</h2>
+  <p style="margin:0 0 12px"><a href="${esc(link)}" style="display:inline-block;background:#2f6fd6;color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-weight:600">Sign in to Potluck</a></p>
+  <p style="margin:0 0 28px;color:#6b6b66;font-size:13px">Next time, sign in at <a href="${SITE}">${SITE}</a> with ${esc(email)}.</p>
+  <h3 style="margin:0 0 8px;font-size:16px">Your agent key</h3>
+  <pre style="margin:0 0 12px;${code};font-size:13px">${esc(key)}</pre>
   ${cmds.map(([os, cmd]) => `<p style="margin:0 0 2px;color:#6b6b66;font-size:13px">${esc(os)}</p>
-  <pre style="margin:0 0 10px;background:#f2f1ed;padding:8px;border-radius:6px;white-space:pre-wrap;word-break:break-all;font-size:12px">${esc(cmd)}</pre>`).join('\n  ')}
-  <p style="margin:12px 0">Then ask your agent something like: <i>"Add a page to ${SITE} that lists our favorite restaurants."</i>
-    Agents find the instructions at <a href="${SITE}llms.txt">${SITE}llms.txt</a>.</p>
-  <p style="margin:0;color:#6b6b66;font-size:13px">The key acts as you, so keep it private. If it ever leaks, revoke it under Settings
-    (the gear at the bottom of the menu) and create a new one there.</p>
+  <pre style="margin:0 0 10px;${code}">${esc(cmd)}</pre>`).join('\n  ')}
+  <p style="margin:16px 0 0">Then ask your agent: <i>"${esc(ask)}"</i></p>
+  <p style="margin:16px 0 0;color:#6b6b66;font-size:13px">Keep the key private.</p>
 </div>`;
   return { subject: 'Welcome to Potluck', text, html };
 }

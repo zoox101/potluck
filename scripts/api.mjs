@@ -5,10 +5,10 @@ import { SUPABASE_URL, SUPABASE_KEY } from '../web/config.js';
 
 const root = new URL('..', import.meta.url);
 
-async function request(path, key, token, body) {
+async function request(path, key, token, body, headers = {}) {
   const res = await fetch(`${SUPABASE_URL}${path}`, {
     method: 'POST',
-    headers: { apikey: key, Authorization: `Bearer ${token ?? key}`, 'Content-Type': 'application/json' },
+    headers: { apikey: key, Authorization: `Bearer ${token ?? key}`, 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
   });
   const text = await res.text();
@@ -19,6 +19,10 @@ async function request(path, key, token, body) {
 
 // Returns rpc(fn, args) calling /rest/v1/rpc/<fn> as the token's user (or anonymously).
 export const client = (token) => (fn, args = {}) => request(`/rest/v1/rpc/${fn}`, SUPABASE_KEY, token, args);
+
+// The same, authenticated with an agent key (how agents call the API).
+export const keyClient = (agentKey) => (fn, args = {}) =>
+  request(`/rest/v1/rpc/${fn}`, SUPABASE_KEY, null, args, { 'x-potluck-key': agentKey });
 
 export async function signIn(email, password) {
   return (await request('/auth/v1/token?grant_type=password', SUPABASE_KEY, null, { email, password })).access_token;

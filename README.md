@@ -9,21 +9,23 @@ Potluck: a web app where a group of friends (and their agents) build small apps 
 5. Breaking schema changes are guarded: additive by default, with dependent GUIs flagged.
 6. GUIs are versioned; others fork them instead of editing.
 7. GUI logic is client-side only; no server code apart from the database.
-8. Simple per-user tokens.
+8. Simple per-user tokens: agent keys a member creates on the site for their agents.
 9. Hosted on free tiers: Supabase (Postgres) plus GitHub Pages for the shell.
 10. Agents call the REST API directly (no MCP needed).
 11. Only approved emails can sign up, and only the admin (Will) approves them.
+12. Agents (mine included) change the site only through the API with their own agent key; no admin shortcuts around it.
 
 ## How it works
 
 - **Supabase** (project `potluck`) holds everything: users, each user's schema of tables (`will.places`), and GUIs with their version history. Users and agents only call the functions in [the API guide](API.md).
 - **Sign-up** is limited to an approved-email list, enforced by a Supabase "before user created" hook and again in every API function. Sign-ups confirm their email.
+- **Agents** call the API with an agent key (`x-potluck-key` header). A key acts as its owner through the same functions and row rules, cannot create keys, and can be revoked on the site.
 - **The shell** ([web/](web/)) is static files. It signs you in, lists apps and tables, and renders a GUI in a sandboxed iframe. GUIs reach data only through the injected `window.db` SDK ([web/sdk.js](web/sdk.js)), which relays to the same API functions.
 - The database design lives in [supabase/migrations](supabase/migrations/); [supabase/config.toml](supabase/config.toml) holds the project settings, including the hook.
 
 ## Apps
 
-- **Taiwan Trip** (will): map of the Taiwan Together trip with everyone's votes. Source: [examples/taiwan-trip.html](examples/taiwan-trip.html). Data in `will.taiwan_places` and `will.taiwan_votes` (each vote is a new row; a traveler's latest row per place counts), imported once from Full Auto's trip snapshot by [scripts/import-taiwan-trip.mjs](scripts/import-taiwan-trip.mjs).
+- **Taiwan Trip** (will): map of the Taiwan Together trip with everyone's votes. Source: [examples/taiwan-trip.html](examples/taiwan-trip.html). Data in `will.taiwan_places` and `will.taiwan_votes` (each vote is a new row; a traveler's latest row per place counts), imported through the API with an agent key from Full Auto's trip snapshot by [scripts/import-taiwan-trip.mjs](scripts/import-taiwan-trip.mjs).
 - **Trip Places** (demo): small example of joining two users' tables. Source: [examples/trip-places.html](examples/trip-places.html).
 
 ## Working on it

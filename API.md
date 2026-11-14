@@ -2,22 +2,21 @@ How agents (and people with `curl`) use Potluck. GUIs use the same functions thr
 
 ## Connecting
 
-Every call needs the project's public key and your access token.
+Agents act as a person through an **agent key**. The person signs in at https://zoox101.github.io/potluck/, creates a key under "Agent keys", and gives it to their agent. A key can do everything its owner can through these functions, except create more keys; the owner can revoke it anytime. Never use someone's password.
+
+Every call sends the project's public key (`apikey`, from [web/config.js](web/config.js)) and the agent key (`x-potluck-key`):
 
 ```bash
-URL=http://127.0.0.1:54321      # local; the hosted project URL later
-KEY=...                         # the anon key, as in web/config.js
-
-# Get an access token (valid 1 hour) by signing in:
-TOKEN=$(curl -s "$URL/auth/v1/token?grant_type=password" -H "apikey: $KEY" \
-  -H 'Content-Type: application/json' -d '{"email":"will@example.com","password":"password123"}' | jq -r .access_token)
+URL=https://bigdxbidkpteoxtnvdtp.supabase.co
+KEY=...           # SUPABASE_KEY from web/config.js (public)
+AGENT_KEY=pk_...  # your agent key (secret)
 
 # Call a function: POST /rest/v1/rpc/<function> with JSON arguments.
-curl -s "$URL/rest/v1/rpc/describe" -H "apikey: $KEY" -H "Authorization: Bearer $TOKEN" \
+curl -s "$URL/rest/v1/rpc/describe" -H "apikey: $KEY" -H "x-potluck-key: $AGENT_KEY" \
   -H 'Content-Type: application/json' -d '{}'
 ```
 
-**Start with `describe`.** It lists every table (with columns and which GUIs read it) and every GUI. Accounts need an email the admin has approved; a new account first calls `claim_username`.
+**Start with `describe`.** It lists every table (with columns and which GUIs read it) and every GUI.
 
 ## Rules
 
@@ -31,13 +30,13 @@ curl -s "$URL/rest/v1/rpc/describe" -H "apikey: $KEY" -H "Authorization: Bearer 
 
 | Function | Arguments | Returns |
 |---|---|---|
-| `claim_username` | `name` | the username; also creates your schema |
 | `describe` | | `{me, tables, guis}` |
 | `create_table` | `name`, `columns`: `[{name, type, required?}]` | `owner.table` |
 | `add_column` | `table_name`, `column_spec`: `{name, type, required?}` | `owner.table` |
 | `drop_column` | `table_name`, `column_name`, `force?` | `owner.table` |
 | `drop_table` | `table_name`, `force?` | `owner.table` |
 | `insert_row` | `table_name`, `data` | the new row |
+| `insert_rows` | `table_name`, `rows` (array of objects) | number inserted |
 | `update_row` | `table_name`, `id`, `data` | the updated row |
 | `delete_row` | `table_name`, `id` | the deleted row |
 | `query` | `sql` (one read-only `SELECT`; use `owner.table` names) | array of rows |

@@ -1,51 +1,51 @@
-// One-off import of the Taiwan Together trip (as returned by Full Auto's will.taiwan-trip/getTrip)
-// into will.taiwan_places / will.taiwan_votes, plus the Taiwan Trip GUI, all owned by OWNER_EMAIL.
-// Prints SQL; run it with: npx supabase db query --remote --file <out.sql>
+// Import the Taiwan Together trip (as returned by Full Auto's will.taiwan-trip/getTrip) through the
+// normal API with an agent key: creates <owner>.taiwan_places / <owner>.taiwan_votes and the Taiwan Trip GUI.
+//   POTLUCK_KEY_FILE=~/.config/potluck/agent.key node scripts/import-taiwan-trip.mjs trip.json [--replace]
+// --replace first drops those tables and the owner's existing "Taiwan Trip" GUI.
 import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { keyClient } from './api.mjs';
 
-const [tripFile, ownerEmail = 'william@thebookers.net'] = process.argv.slice(2);
+const [tripFile, flag] = process.argv.slice(2);
+const keyFile = (process.env.POTLUCK_KEY_FILE ?? '~/.config/potluck/agent.key').replace(/^~/, homedir());
+const rpc = keyClient(readFileSync(keyFile, 'utf8').trim());
 const { places } = JSON.parse(readFileSync(tripFile, 'utf8')).result;
-const gui = readFileSync(new URL('../examples/taiwan-trip.html', import.meta.url), 'utf8');
+const code = readFileSync(new URL('../examples/taiwan-trip.html', import.meta.url), 'utf8');
 
-const rows = places.map((p) => ({
+const { me, guis } = await rpc('describe');
+if (!me) throw new Error('The agent key is not valid for an approved member');
+const PLACES = `${me}.taiwan_places`, VOTES = `${me}.taiwan_votes`;
+
+if (flag === '--replace') {
+  for (const gui of guis.filter((g) => g.owner === me && g.name === 'Taiwan Trip')) await rpc('delete_gui', { id: gui.id });
+  for (const table of [VOTES, PLACES]) await rpc('drop_table', { table_name: table, force: true }).catch(() => {});
+}
+
+const col = (name, type, required = false) => ({ name, type, required });
+const insertAll = async (table_name, rows) => {
+  for (let i = 0; i < rows.length; i += 200) await rpc('insert_rows', { table_name, rows: rows.slice(i, i + 200) });
+};
+await rpc('create_table', { name: 'taiwan_places', columns: [
+  col('slug', 'text', true), col('name', 'text', true), col('chinese', 'text'), col('city', 'text'), col('area', 'text'),
+  col('category', 'text'), col('description', 'text'), col('duration_hours', 'numeric'), col('cost', 'text'),
+  col('lat', 'numeric'), col('lng', 'numeric'), col('google_maps_url', 'text'), col('photos', 'jsonb'),
+  col('recommendation', 'text'), col('world_map', 'jsonb'), col('scheduled', 'jsonb'),
+] });
+await rpc('create_table', { name: 'taiwan_votes', columns: [col('place_id', 'bigint', true), col('traveler', 'text', true), col('vote', 'text', true)] });
+
+await insertAll(PLACES, places.map((p) => ({
   slug: p.id, name: p.name, chinese: p.chinese ?? null, city: p.city, area: p.area ?? null, category: p.category,
   description: p.description, duration_hours: p.duration_hours ?? null, cost: p.cost ?? null,
   lat: p.coordinates?.lat ?? null, lng: p.coordinates?.lng ?? null, google_maps_url: p.google_maps_url ?? null,
   photos: p.photos, recommendation: p.recommendation, world_map: p.worldMap, scheduled: p.scheduled,
-}));
-const votes = places.flatMap((p) => p.interest.votes.map((v) => ({ slug: p.id, traveler: v.name, vote: v.label })));
+})));
 
-const quote = (s, tag) => { if (s.includes(`$${tag}$`)) throw new Error(`data contains $${tag}$`); return `$${tag}$${s}$${tag}$`; };
-const columns = (spec) => JSON.stringify(spec.map(([name, type, required]) => ({ name, type, required: !!required })));
+const ids = Object.fromEntries((await rpc('query', { sql: `select slug, id from ${PLACES}` })).map((r) => [r.slug, r.id]));
+const votes = places.flatMap((p) => p.interest.votes.map((v) => ({ place_id: ids[p.id], traveler: v.name, vote: v.label })));
+await insertAll(VOTES, votes);
 
-console.log(`begin;
--- Act as the owner so create_table/save_gui namespace and attribute everything to them.
-select set_config('request.jwt.claims', json_build_object('sub', id, 'email', email, 'role', 'authenticated')::text, true)
-  from auth.users where email = '${ownerEmail}';
-
-select public.create_table('taiwan_places', '${columns([
-  ['slug', 'text', 1], ['name', 'text', 1], ['chinese', 'text'], ['city', 'text'], ['area', 'text'], ['category', 'text'],
-  ['description', 'text'], ['duration_hours', 'numeric'], ['cost', 'text'], ['lat', 'numeric'], ['lng', 'numeric'],
-  ['google_maps_url', 'text'], ['photos', 'jsonb'], ['recommendation', 'text'], ['world_map', 'jsonb'], ['scheduled', 'jsonb'],
-])}');
-select public.create_table('taiwan_votes', '${columns([['place_id', 'bigint', 1], ['traveler', 'text', 1], ['vote', 'text', 1]])}');
-
-insert into will.taiwan_places (slug, name, chinese, city, area, category, description, duration_hours, cost, lat, lng,
-                                google_maps_url, photos, recommendation, world_map, scheduled)
-select slug, name, chinese, city, area, category, description, duration_hours, cost, lat, lng,
-       google_maps_url, photos, recommendation, world_map, scheduled
-from jsonb_to_recordset(${quote(JSON.stringify(rows), 'rows')}::jsonb) as x(
-  slug text, name text, chinese text, city text, area text, category text, description text, duration_hours numeric,
-  cost text, lat numeric, lng numeric, google_maps_url text, photos jsonb, recommendation text, world_map jsonb, scheduled jsonb);
-
-insert into will.taiwan_votes (place_id, traveler, vote)
-select p.id, x.traveler, x.vote
-from jsonb_to_recordset(${quote(JSON.stringify(votes), 'votes')}::jsonb) as x(slug text, traveler text, vote text)
-join will.taiwan_places p on p.slug = x.slug;
-
-select public.save_gui('Taiwan Trip', ${quote(gui, 'gui')},
-  'Map of the Taiwan Together trip (Dec 16-26, 2026): every place colored by your vote, with photos, everyone''s votes and Claude''s take.',
-  array['will.taiwan_places', 'will.taiwan_votes']);
-
-select (select count(*) from will.taiwan_places) as places, (select count(*) from will.taiwan_votes) as votes;
-commit;`);
+const gui = await rpc('save_gui', {
+  name: 'Taiwan Trip', code, reads: [PLACES, VOTES],
+  description: "Map of the Taiwan Together trip (Dec 16-26, 2026): every place colored by your vote, with photos, everyone's votes and Claude's take.",
+});
+console.log(`Imported ${places.length} places and ${votes.length} votes as ${me}; GUI ${gui.id} v${gui.version}.`);

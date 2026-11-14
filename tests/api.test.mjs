@@ -2,7 +2,7 @@
 // Creates throwaway users t?_<tag>@example.com and removes them afterwards.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { admin, client, createUser, newUser, signIn, signUp } from '../scripts/api.mjs';
+import { admin, client, createUser, keyClient, newUser, signIn, signUp } from '../scripts/api.mjs';
 
 const tag = Math.random().toString(36).slice(2, 8);
 const emails = [];
@@ -20,8 +20,31 @@ const T = `ta_${tag}.items`;
 const rejects = (p, re) => assert.rejects(p, re);
 
 test('anonymous callers are refused', async () => {
-  await rejects(client()('describe'), /permission denied/);
-  await rejects(client()('allow_email', { email: 'x@example.com' }), /permission denied/);
+  const anon = client();
+  assert.deepEqual(await anon('describe'), { me: null });
+  await rejects(anon('query', { sql: 'select 1' }), /claim a username/);
+  await rejects(anon('create_table', { name: 'x' }), /claim a username/);
+  await rejects(anon('allow_email', { email: 'x@example.com' }), /permission denied/);
+  await rejects(anon('create_api_key', { name: 'x' }), /permission denied/);
+  await rejects(keyClient('pk_wrong')('query', { sql: 'select 1' }), /claim a username/);
+});
+
+test('agent keys act as their owner, cannot make keys, and can be revoked', async () => {
+  const key = await a('create_api_key', { name: 'test agent' });
+  const agent = keyClient(key);
+  assert.equal((await agent('describe')).me, `ta_${tag}`);
+  assert.equal(await agent('create_table', { name: 'agent_made', columns: [{ name: 'note', type: 'text' }] }), `ta_${tag}.agent_made`);
+  assert.equal(await agent('insert_rows', { table_name: `ta_${tag}.agent_made`, rows: [{ note: 'x' }, { note: 'y' }] }), 2);
+  const [row] = await b('query', { sql: `select id, created_by from ta_${tag}.agent_made limit 1` });
+  await rejects(b('delete_row', { table_name: `ta_${tag}.agent_made`, id: row.id }), /not yours/);
+  await agent('delete_row', { table_name: `ta_${tag}.agent_made`, id: row.id });
+  await rejects(agent('create_api_key', { name: 'nested' }), /permission denied/);
+  await rejects(b('add_column', { table_name: `ta_${tag}.agent_made`, column_spec: { name: 'z' } }), /Only ta_/);
+  const [listed] = await a('list_api_keys');
+  assert.equal(listed.name, 'test agent');
+  await a('revoke_api_key', { id: listed.id });
+  await rejects(agent('query', { sql: 'select 1' }), /claim a username/);
+  await a('drop_table', { table_name: `ta_${tag}.agent_made` });
 });
 
 test('only approved emails can sign up', async () => {

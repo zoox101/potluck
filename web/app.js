@@ -102,7 +102,23 @@ function renderDashboard({ me, guis, tables }) {
         <span class="muted">${t.columns.map((c) => esc(c.name)).join(', ')}</span>
         ${t.read_by.length ? `<span class="muted">Read by ${t.read_by.map((id) => esc(names[id])).join(', ')}</span>` : ''}
       </div>`).join('') || '<p class="muted">No tables yet.</p>'}
-    </div>`;
+    </div>
+    <div class="row"><h2 style="margin-right:auto">Agent keys</h2><button id="newkey">New key</button></div>
+    <p class="muted">Give a key to your agent so it can use the <a href="https://github.com/zoox101/potluck/blob/main/API.md">API</a> as you. Keys can't create other keys.</p>
+    <div id="keys" class="grid"></div>`;
+  renderKeys();
+  main.querySelector('#newkey').onclick = act(async () => {
+    const name = prompt('What is this key for? (e.g. "Claude Code on laptop")');
+    if (!name) return;
+    const key = await rpc('create_api_key', { name });
+    await renderKeys();
+    main.querySelector('#keys').insertAdjacentHTML('afterbegin', `
+      <div class="card">
+        <strong>New key for ${esc(name)}</strong>
+        <span class="muted">Copy it now; it won't be shown again.</span>
+        <code style="word-break:break-all">${esc(key)}</code>
+      </div>`);
+  });
   main.querySelector('#new').onclick = act(async () => {
     const name = prompt('App name');
     if (!name) return;
@@ -117,6 +133,22 @@ function renderDashboard({ me, guis, tables }) {
     if (!confirm('Delete this app and all its versions?')) return;
     await rpc('delete_gui', { id: b.dataset.delete });
     render();
+  })));
+}
+
+async function renderKeys() {
+  const box = main.querySelector('#keys');
+  const keys = await rpc('list_api_keys');
+  box.innerHTML = keys.map((k) => `
+    <div class="card">
+      <strong>${esc(k.name)}</strong>
+      <span class="muted">Created ${new Date(k.created_at).toLocaleDateString()}</span>
+      <div class="row"><button data-revoke="${k.id}">Revoke</button></div>
+    </div>`).join('') || '<p class="muted">No agent keys yet.</p>';
+  box.querySelectorAll('[data-revoke]').forEach((b) => (b.onclick = act(async () => {
+    if (!confirm('Revoke this key? Agents using it will stop working.')) return;
+    await rpc('revoke_api_key', { id: b.dataset.revoke });
+    renderKeys();
   })));
 }
 

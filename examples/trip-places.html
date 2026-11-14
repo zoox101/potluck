@@ -27,7 +27,7 @@
     async function load() {
       const rows = await db.query(`
         select p.id, p.name, p.city, coalesce(sum(v.vote), 0) as votes
-        from will.places p left join kevin.votes v on v.place_id = p.id
+        from demo_alex.places p left join demo_sam.votes v on v.place_id = p.id
         group by p.id order by votes desc, p.name`);
       list.innerHTML = '';
       for (const p of rows) {
@@ -36,7 +36,7 @@
         li.querySelector('span').textContent = p.name;
         li.querySelector('small').textContent = `${p.city ?? ''} · ${p.votes} votes`;
         li.querySelector('button').onclick = () =>
-          db.insert('kevin.votes', { place_id: p.id, vote: 1 }).catch(fail);
+          db.insert('demo_sam.votes', { place_id: p.id, vote: 1 }).catch(fail);
         list.append(li);
       }
     }
@@ -44,11 +44,11 @@
     document.getElementById('add').onsubmit = (e) => {
       e.preventDefault();
       const f = e.target, { name, city } = f.elements;
-      db.insert('will.places', { name: name.value, city: city.value || null }).then(() => f.reset()).catch(fail);
+      db.insert('demo_alex.places', { name: name.value, city: city.value || null }).then(() => f.reset()).catch(fail);
     };
 
-    db.subscribe('will.places', load);
-    db.subscribe('kevin.votes', load);
+    db.subscribe('demo_alex.places', load);
+    db.subscribe('demo_sam.votes', load);
     load().catch(fail);
   </script>
 </body>

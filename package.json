@@ -8,9 +8,10 @@
     "start": "supabase start && scripts/config.sh",
     "config": "scripts/config.sh",
     "stop": "supabase stop",
-    "reset": "supabase db reset && node scripts/seed.mjs",
     "serve": "python3 -m http.server 8080 -d web",
-    "test": "node --test tests/"
+    "test": "node --test tests/",
+    "seed": "node scripts/seed.mjs",
+    "admin": "node scripts/admin.mjs"
   },
   "description": "Build web apps cooperatively with friends and their agents",
   "devDependencies": {

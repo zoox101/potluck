@@ -1,21 +1,46 @@
-// API rules, run against the local Supabase: npm test
-import { test } from 'node:test';
+// API rules, run against the linked (or local) Supabase project: npm test
+// Creates throwaway users t?_<tag>@example.com and removes them afterwards.
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { client, newUser, signUp } from '../scripts/api.mjs';
+import { admin, client, createUser, newUser, signIn, signUp } from '../scripts/api.mjs';
 
 const tag = Math.random().toString(36).slice(2, 8);
-const a = await newUser(`ta_${tag}`);
-const b = await newUser(`tb_${tag}`);
+const emails = [];
+const user = (name) => { emails.push(`${name}@example.com`); return newUser(name); };
+after(async () => {
+  for (const email of emails) {
+    await admin('remove_user', { email }).catch(() => {});
+    await admin('disallow_email', { email });
+  }
+});
+
+const a = await user(`ta_${tag}`);
+const b = await user(`tb_${tag}`);
 const T = `ta_${tag}.items`;
 const rejects = (p, re) => assert.rejects(p, re);
 
-test('anonymous callers are refused', () => rejects(client()('describe'), /permission denied/));
+test('anonymous callers are refused', async () => {
+  await rejects(client()('describe'), /permission denied/);
+  await rejects(client()('allow_email', { email: 'x@example.com' }), /permission denied/);
+});
 
-test('usernames must be valid and free', async () => {
-  const rpc = client(await signUp(`tc_${tag}@example.com`, 'password123'));
-  await rejects(rpc('claim_username', { name: 'public' }), /not available/);
-  await rejects(rpc('claim_username', { name: `ta_${tag}` }), /not available/);
-  await rejects(rpc('create_table', { name: 'x' }), /claim a username/);
+test('only approved emails can sign up', async () => {
+  await rejects(signUp(`stranger_${tag}@example.com`, 'password123'), /not been approved/);
+});
+
+test('members can not use admin functions', () => rejects(a('allow_email', { email: 'x@example.com' }), /permission denied/));
+
+test('usernames must be valid and free; non-members see nothing', async () => {
+  const email = `tc_${tag}@example.com`;
+  emails.push(email);
+  await admin('allow_email', { email });
+  await createUser(email, 'password123');
+  const c = client(await signIn(email, 'password123'));
+  assert.deepEqual(await c('describe'), { me: null });
+  await rejects(c('query', { sql: 'select 1' }), /claim a username/);
+  await rejects(c('claim_username', { name: 'public' }), /not available/);
+  await rejects(c('claim_username', { name: `ta_${tag}` }), /not available/);
+  await rejects(c('create_table', { name: 'x' }), /claim a username/);
 });
 
 test('owner creates a table; schema changes are owner-only', async () => {
@@ -48,6 +73,7 @@ test('query is read-only and can join across users', async () => {
   await rejects(a('query', { sql: `delete from ${T}` }), /syntax error|not allowed/);
   await rejects(a('query', { sql: `select 1) q; drop table ${T}; select (1` }), /not allowed|cannot|syntax/);
   await rejects(a('query', { sql: 'select * from auth.users' }), /permission denied/);
+  await rejects(a('query', { sql: 'select * from app.allowed_emails' }), /permission denied/);
   assert.equal((await a('query', { sql: `select count(*)::int as n from ${T}` }))[0].n, 1);
 });
 
@@ -67,4 +93,11 @@ test('GUIs: owner saves versions, others fork, schema changes are guarded', asyn
   const info = await a('describe');
   assert.equal(info.me, `ta_${tag}`);
   assert.ok(info.tables.find((t) => t.table === T).read_by.includes(gui.id));
+});
+
+test('withdrawing approval locks a member out', async () => {
+  await admin('disallow_email', { email: `tb_${tag}@example.com` });
+  await rejects(b('insert_row', { table_name: T, data: { label: 'x' } }), /approved email/);
+  await rejects(b('query', { sql: 'select 1' }), /approved email/);
+  await admin('allow_email', { email: `tb_${tag}@example.com` });
 });

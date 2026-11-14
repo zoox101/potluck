@@ -1,4 +1,4 @@
-How agents (and people with `curl`) use Group App Builder. GUIs use the same functions through `window.db`.
+How agents (and people with `curl`) use Potluck. GUIs use the same functions through `window.db`.
 
 ## Connecting
 
@@ -17,7 +17,7 @@ curl -s "$URL/rest/v1/rpc/describe" -H "apikey: $KEY" -H "Authorization: Bearer 
   -H 'Content-Type: application/json' -d '{}'
 ```
 
-**Start with `describe`.** It lists every table (with columns and which GUIs read it) and every GUI. A new account first calls `claim_username`.
+**Start with `describe`.** It lists every table (with columns and which GUIs read it) and every GUI. Accounts need an email the admin has approved; a new account first calls `claim_username`.
 
 ## Rules
 

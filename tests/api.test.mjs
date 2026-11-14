@@ -110,15 +110,19 @@ test('query is read-only and can join across users', async () => {
   assert.equal((await a('query', { sql: `select count(*)::int as n from ${T}` }))[0].n, 1);
 });
 
-test('GUIs: anyone saves versions, only the owner deletes, schema changes are guarded', async () => {
-  const gui = await a('save_gui', { name: 'Items', code: '<p>v1</p>', reads: [T] });
-  assert.equal((await b('save_gui', { id: gui.id, name: 'Items', code: '<p>b edit</p>' })).version, 2);
+test('GUIs: anyone saves code versions, only the owner deletes, schema changes are guarded', async () => {
+  await rejects(a('save_gui', { name: 'Old', code: 'x' }), /save_gui|function/);
+  const gui = await a('create_gui', { name: 'Items', code: '<p>v1</p>', reads: [T] });
+  assert.equal(gui.version, 1);
+  assert.equal((await b('update_gui_code', { id: gui.id, code: '<p>b edit</p>' })).version, 2);
   const latest = await a('get_gui', { id: gui.id });
   assert.deepEqual([latest.owner, latest.saved_by, latest.code], [`ta_${tag}`, `tb_${tag}`, '<p>b edit</p>']);
   assert.equal((await a('describe')).guis.find((g) => g.id === gui.id).updated_by, `tb_${tag}`);
   assert.equal((await a('get_gui', { id: gui.id, version: 1 })).saved_by, `ta_${tag}`);
-  assert.equal((await a('save_gui', { id: gui.id, name: 'Items', code: '<p>v2</p>' })).version, 3);
-  await rejects(b('save_gui', { id: '00000000-0000-0000-0000-000000000000', name: 'x', code: 'x' }), /not found/);
+  assert.equal((await a('update_gui_code', { id: gui.id, code: '<p>v2</p>' })).version, 3);
+  await rejects(b('update_gui_code', { id: '00000000-0000-0000-0000-000000000000', code: 'x' }), /not found/);
+  await rejects(a('create_gui', { name: 'No code' }), /code is required|Could not find the function/);
+  await rejects(a('update_gui_code', { id: gui.id, code: 'x', reads: ['nobody.nothing'] }), /Unknown table/);
   await rejects(b('delete_gui', { id: gui.id }), /not yours/);
   const fork = await b('fork_gui', { id: gui.id });
   const forked = await b('get_gui', { id: fork.id });
@@ -133,20 +137,30 @@ test('GUIs: anyone saves versions, only the owner deletes, schema changes are gu
   assert.ok(info.tables.find((t) => t.table === T).read_by.includes(gui.id));
 });
 
-test('GUI icons: set, kept when omitted, cleared with empty string, copied by forks', async () => {
-  const gui = await a('save_gui', { name: 'Icons', code: 'x', icon: 'map-pin', color: '#2f6fd6' });
+test('GUI metadata changes without new versions; omitted fields are kept; forks copy icons', async () => {
+  const gui = await a('create_gui', { name: 'Icons', code: 'x', icon: 'map-pin', color: '#2f6fd6' });
   let g = await a('get_gui', { id: gui.id });
-  assert.deepEqual([g.icon, g.color], ['map-pin', '#2f6fd6']);
-  await a('save_gui', { id: gui.id, name: 'Icons', code: 'y' });
+  assert.deepEqual([g.icon, g.color, g.visibility, g.updated_by], ['map-pin', '#2f6fd6', 'default', `ta_${tag}`]);
+  await a('update_gui_code', { id: gui.id, code: 'y' });
   g = (await a('describe')).guis.find((x) => x.id === gui.id);
-  assert.deepEqual([g.icon, g.color], ['map-pin', '#2f6fd6']);
+  assert.deepEqual([g.icon, g.color, g.version], ['map-pin', '#2f6fd6', 2]);
+
+  g = await b('update_gui_metadata', { id: gui.id, name: 'Renamed', visibility: 'starred' });
+  assert.deepEqual([g.name, g.icon, g.visibility, g.version, g.updated_by], ['Renamed', 'map-pin', 'starred', 2, `tb_${tag}`]);
+  assert.equal((await a('get_gui', { id: gui.id })).versions, 2);
+  await b('update_gui_metadata', { id: gui.id, visibility: 'hidden' });
+  assert.equal((await a('describe')).guis.find((x) => x.id === gui.id).visibility, 'hidden');
+
   const fork = await b('fork_gui', { id: gui.id });
-  assert.equal((await b('get_gui', { id: fork.id })).icon, 'map-pin');
-  await rejects(a('save_gui', { id: gui.id, name: 'Icons', code: 'z', icon: 'Not An Icon' }), /check constraint/);
-  await rejects(a('save_gui', { id: gui.id, name: 'Icons', code: 'z', color: 'blue' }), /check constraint/);
-  await a('save_gui', { id: gui.id, name: 'Icons', code: 'z', icon: '', color: '' });
-  g = await a('get_gui', { id: gui.id });
-  assert.deepEqual([g.icon, g.color], [null, null]);
+  const forked = await b('get_gui', { id: fork.id });
+  assert.deepEqual([forked.icon, forked.visibility, forked.owner], ['map-pin', 'default', `tb_${tag}`]);
+
+  await rejects(a('update_gui_metadata', { id: gui.id, icon: 'Not An Icon' }), /check constraint/);
+  await rejects(a('update_gui_metadata', { id: gui.id, color: 'blue' }), /check constraint/);
+  await rejects(a('update_gui_metadata', { id: gui.id, visibility: 'secret' }), /check constraint/);
+  await rejects(a('update_gui_metadata', { id: gui.id, name: '  ' }), /can't be empty/);
+  g = await a('update_gui_metadata', { id: gui.id, icon: '', color: '' });
+  assert.deepEqual([g.icon, g.color, g.name], [null, null, 'Renamed']);
 });
 
 test('withdrawing approval locks a member out', async () => {

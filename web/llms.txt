@@ -34,12 +34,14 @@ curl -s "$URL/rest/v1/rpc/describe" -H "apikey: $KEY" -H "x-potluck-key: $AGENT_
 
 ## 3. Add a page
 
-A page is one self-contained HTML document saved with `save_gui`. The site renders it in a sandboxed iframe with a `db` object already defined, and that is the page's only way to reach data (no keys or URLs in page code). External scripts and styles from CDNs work.
+A page (a GUI) is one self-contained HTML document. Its code and its metadata (name, icon, visibility, ...) are changed separately: `create_gui` makes a page, `update_gui_code` saves new code as a new version, and `update_gui_metadata` changes the rest without a new version. The site renders it in a sandboxed iframe with a `db` object already defined, and that is the page's only way to reach data (no keys or URLs in page code). External scripts and styles from CDNs work.
 
 1. If the page needs its own data, `create_table` under your username (e.g. `{"name": "packing_list", "columns": [{"name": "item", "type": "text", "required": true}]}` creates `<me>.packing_list`).
 2. Write the HTML using `db`.
-3. `save_gui` with `name`, `code`, a one-line `description`, `reads` listing every table it reads, and an `icon` and `color` for the apps page and menu: `icon` is a Lucide icon name from https://lucide.dev/icons (e.g. `map`, `plane`, `list-checks`) and `color` a hex color like `#2f6fd6`. It returns `{id, version}`.
-4. Tell the user the page is at `https://zoox101.github.io/potluck/#/gui/<id>`. To change it later, `save_gui` again with the same `id` (each save is a new version).
+3. `create_gui` with `name`, `code`, a one-line `description`, `reads` listing every table it reads, and an `icon` and `color` for the apps page and menu: `icon` is a Lucide icon name from https://lucide.dev/icons (e.g. `map`, `plane`, `list-checks`) and `color` a hex color like `#2f6fd6`. It returns `{id, version}`.
+4. Tell the user the page is at `https://zoox101.github.io/potluck/#/gui/<id>`. To change its code later, `update_gui_code` with the `id` and the full new `code`; to rename it, change its icon or its visibility, `update_gui_metadata`.
+
+Every page has a `visibility`: `starred` (listed first, with a star), `default`, or `hidden` (listed only to its owner, dimmed; direct links still work for everyone). The site lists starred, then default, then hidden pages, alphabetically. Hiding is for trying a page out alone before others see it in their lists; it is not access control. Anyone can change a page's visibility.
 
 The `db` object inside a page:
 
@@ -62,7 +64,7 @@ Pages run for whoever opens them, so `db.me()` is the viewer, and writes are att
 - Every member can read every table and add rows to it. Only a row's creator can update or delete it.
 - Every table gets `id`, `created_by`, `created_at` and `updated_at` automatically; don't set them.
 - To add information to someone else's table, create your own table that stores their row `id` (e.g. `kevin.votes.place_id` -> `will.places.id`) and join in `query`.
-- Any member can edit any GUI: `save_gui` with its `id` saves a new version, and every version is kept. Before changing someone else's GUI, `get_gui` it, start from its current `code`, and keep the change to what was asked: other people use it, and it runs with each viewer's permissions. `get_gui` shows who saved the latest version (`saved_by`). Only a GUI's owner (its creator) can `delete_gui` it. `fork_gui` makes your own copy if you want one.
+- Any member can edit any GUI: `update_gui_code` saves a new version (every version is kept) and `update_gui_metadata` changes its metadata. Before changing someone else's GUI, `get_gui` it, start from its current `code`, and keep the change to what was asked: other people use it, and it runs with each viewer's permissions. `get_gui` shows who saved the latest code version (`saved_by`) and who last changed anything (`updated_by`). Only a GUI's owner (its creator) can `delete_gui` it. `fork_gui` makes your own copy if you want one.
 - `drop_column` and `drop_table` refuse while a GUI lists the table in `reads`; the error names those GUIs. Only pass `force: true` after checking with their owners.
 
 ## Functions
@@ -79,13 +81,16 @@ Pages run for whoever opens them, so `db.me()` is the viewer, and writes are att
 | `update_row` | `table_name`, `id`, `data` | the updated row |
 | `delete_row` | `table_name`, `id` | the deleted row |
 | `query` | `sql` (one read-only `SELECT`; use `owner.table` names) | array of rows |
-| `save_gui` | `name`, `code`, `description?`, `reads?`, `id?` (omit to create), `icon?`, `color?` (omitted keeps the current value, `''` clears it) | `{id, version}` |
-| `get_gui` | `id`, `version?` (default latest) | the GUI with its `code` and version count |
+| `create_gui` | `name`, `code`, `description?`, `reads?`, `icon?`, `color?`, `visibility?` (default `default`) | `{id, version}` |
+| `update_gui_code` | `id`, `code`, `reads?` | `{id, version}` (the new version) |
+| `update_gui_metadata` | `id`, any of `name`, `description`, `reads`, `icon`, `color`, `visibility` (omitted fields are kept; `''` clears `icon`/`color`) | the GUI's metadata |
+| `describe_gui` | `id` | the GUI's metadata (no code) |
+| `get_gui` | `id`, `version?` (default latest) | the GUI's metadata with that version's `code` and the version count |
 | `fork_gui` | `id`, `name?` | `{id, version}` of your copy |
 | `delete_gui` | `id` | `id` |
 
 Column types: `text`, `integer`, `bigint`, `numeric`, `boolean`, `date`, `timestamptz`, `jsonb`, `uuid`.
 
-To roll a GUI back, `get_gui` the old version and `save_gui` its code (anyone can).
+To roll a GUI's code back, `get_gui` the old version and `update_gui_code` with its code (anyone can).
 
 You don't need the site's source code (https://github.com/zoox101/potluck) to add or change pages or data; don't clone, edit or deploy it. It's only for changing Potluck itself.

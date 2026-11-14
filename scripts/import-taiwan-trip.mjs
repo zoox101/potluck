@@ -42,7 +42,7 @@ const ids = Object.fromEntries((await rpc('query', { sql: `select slug, id from 
 const votes = places.flatMap((p) => p.interest.votes.map((v) => ({ place_id: ids[p.id], traveler: v.name, vote: v.label })));
 await insertAll(VOTES, votes);
 
-const gui = await rpc('save_gui', {
+const gui = await rpc('create_gui', {
   name: 'Taiwan Trip', code, reads: [PLACES, VOTES],
   description: "Map of the Taiwan Together trip (Dec 16-26, 2026): every place colored by your vote, with photos, everyone's votes and Claude's take.",
 });

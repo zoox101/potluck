@@ -49,7 +49,7 @@ body { margin: 0; font: 15px/1.45 system-ui, sans-serif; background: var(--bg); 
 .nav-label { padding: 12px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .nav-item { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 8px 10px; border-radius: 8px;
             color: var(--text); text-decoration: none; font-weight: 500; font-size: 14px; }
-.nav-item > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav-item:hover, .nav-item.hl { background: var(--hover); }
 .nav-item.active { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
 .nav-item > .ico { color: var(--muted); margin: 0 3px; }
@@ -100,3 +100,15 @@ form.login { max-width: 320px; display: flex; flex-direction: column; gap: 8px; 
 iframe { flex: 1; width: 100%; border: 0; background: #fff; }
 code { font-size: 13px; }
 button .ico { width: 16px; height: 16px; vertical-align: -3px; margin-right: 2px; }
+
+/* Visibility: starred apps get a star; hidden ones (shown only to their owner) are dimmed. */
+.badge { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; }
+.badge.star { color: #e0a021; }
+.badge.hidden-mark { color: var(--muted); }
+.badge .ico { width: 14px; height: 14px; }
+.card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.card-top .badge.star svg { width: 18px; height: 18px; }
+.is-hidden { opacity: .55; }
+.is-hidden:hover, .is-hidden.active, .is-hidden.hl { opacity: .85; }
+.app-card.is-hidden { border-style: dashed; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

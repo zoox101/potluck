@@ -24,7 +24,7 @@ for (const [rpc, place] of [[sam, market], [jo, market], [alex, tower]]) {
 }
 
 const code = await readFile(new URL('../examples/trip-places.html', import.meta.url), 'utf8');
-const gui = await alex('save_gui', {
+const gui = await alex('create_gui', {
   name: 'Trip Places', code, description: 'Places to visit, with votes from everyone.', reads: ['demo_alex.places', 'demo_sam.votes'],
 });
 await jo('fork_gui', { id: gui.id, name: 'Trip Places (Jo)' });

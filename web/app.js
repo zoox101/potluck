@@ -133,13 +133,14 @@ function openDrawer() {
   let hl = 0;
   const draw = () => {
     const q = input.value.trim().toLowerCase();
-    const apps = info.guis.filter((g) => !q || `${g.name} ${g.description} ${g.owner}`.toLowerCase().includes(q));
+    const apps = listedApps().filter((g) => !q || `${g.name} ${g.description} ${g.owner}`.toLowerCase().includes(q));
     hl = Math.min(hl, Math.max(apps.length - 1, 0));
     nav.innerHTML = `
-      ${q ? '' : `<a href="#/" class="nav-item ${current === 'home' ? 'active' : ''}">${icon('layout-grid')}<span>All apps</span></a>`}
+      ${q ? '' : `<a href="#/" class="nav-item ${current === 'home' ? 'active' : ''}">${icon('layout-grid')}<span class="name">All apps</span></a>`}
       <div class="nav-label">Apps</div>
       ${apps.map((g, i) => `
-        <a href="#/gui/${g.id}" class="nav-item app ${g.id === current ? 'active' : ''} ${q && i === hl ? 'hl' : ''}">${tile(g)}<span>${esc(g.name)}</span></a>`).join('')
+        <a href="#/gui/${g.id}" class="nav-item app ${g.visibility === 'hidden' ? 'is-hidden' : ''} ${g.id === current ? 'active' : ''} ${q && i === hl ? 'hl' : ''}"
+           ${g.visibility === 'hidden' ? 'title="Hidden: only you see it in the list"' : ''}>${tile(g)}<span class="name">${esc(g.name)}</span>${badge(g)}</a>`).join('')
         || `<p class="nav-empty">${q ? 'No apps match that search.' : 'No apps yet.'}</p>`}`;
     hydrateTiles(nav);
     nav.querySelector('.hl')?.scrollIntoView({ block: 'nearest' });
@@ -253,15 +254,32 @@ function renderDashboard() {
   renderTop('Potluck');
   main.innerHTML = `
     <h1>Apps</h1>
-    <div class="apps">${info.guis.map((g) => `
-      <a class="app-card" href="#/gui/${g.id}">
-        ${tile(g, 'lg')}
+    <div class="apps">${listedApps().map((g) => `
+      <a class="app-card ${g.visibility === 'hidden' ? 'is-hidden' : ''}" href="#/gui/${g.id}">
+        <span class="card-top">${tile(g, 'lg')}${badge(g, true)}</span>
         <strong>${esc(g.name)}</strong>
         ${g.description ? `<span class="desc">${esc(g.description)}</span>` : ''}
         <span class="by">by ${esc(g.owner)}</span>
       </a>`).join('') || '<p class="muted">No apps yet. Ask your agent to add one.</p>'}
     </div>`;
   hydrateTiles(main);
+}
+
+// Apps as listed: starred, then default, then hidden (hidden ones only for their owner); A-Z within each.
+const RANK = { starred: 0, default: 1, hidden: 2 };
+function listedApps() {
+  return info.guis
+    .filter((g) => g.visibility !== 'hidden' || g.owner === info.me)
+    .sort((a, b) => (RANK[a.visibility] ?? 1) - (RANK[b.visibility] ?? 1)
+      || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+// A filled star for starred apps; an eye-off mark (with a label on cards) for hidden ones.
+const STAR = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>';
+function badge(g, labeled = false) {
+  if (g.visibility === 'starred') return `<span class="badge star" title="Starred">${STAR}<span class="sr-only">Starred</span></span>`;
+  if (g.visibility === 'hidden') return `<span class="badge hidden-mark" title="Hidden: only you see it in the list">${icon('eye-off')}${labeled ? '<span>Hidden</span>' : ''}</span>`;
+  return '';
 }
 
 function renderSettings() {

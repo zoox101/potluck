@@ -41,13 +41,14 @@ npm test                               # API rule tests (creates and removes thr
 npm run seed                           # (re)create the demo users, tables and apps
 npm run admin allow friend@email.com alice   # approve a friend as username alice; also: disallow, remove, list
 npx supabase db push --remote          # apply new migration files
-npx supabase config push               # apply config.toml changes (check `npx supabase config diff` first)
+npx supabase config push               # apply config.toml changes (check `npx supabase config diff` first); needs the SMTP env vars below
 ```
 
-`npm run seed` creates demo users `demo_alex`, `demo_sam` and `demo_jo` (sign in as `<name>@example.com`, password `password123`); remove them with `npm run admin remove <email>`. None exist right now. Admin commands use the project's secret key through the CLI and never print it.
+`npm run seed` creates demo users `demo_alex`, `demo_sam` and `demo_jo` (`<name>@example.com`; they can't receive sign-in emails, so they only exist for the API and tests); remove them with `npm run admin remove <email>`. None exist right now. Admin commands use the project's secret key through the CLI and never print it.
 
 ## Deployment
 
 - **Live at https://zoox101.github.io/potluck/.** Every push to `main` that touches `web/` republishes it ([pages.yml](.github/workflows/pages.yml)).
 - A scheduled GitHub Action pings the database every 3 days so the free Supabase project doesn't pause ([keep-alive.yml](.github/workflows/keep-alive.yml)).
 - Database changes are not deployed automatically: run `npx supabase db push --remote` after adding a migration.
+- **Sign-in is passwordless** (no passwords exist): the site emails a link and an 8-digit code ([supabase/templates/sign_in.html](supabase/templates/sign_in.html)). Emails go out through a Gmail account with an app password. `config.toml` reads its credentials from `POTLUCK_SMTP_USER` (the Gmail address) and `POTLUCK_SMTP_PASS` (the app password), so set both when running `npx supabase config push`; never commit them. The SMTP rate limit is 30 emails an hour. Scripts and tests sign users in with codes from the admin API, which sends no email.

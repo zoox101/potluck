@@ -190,7 +190,7 @@ function renderStart() {
     <div class="grid">
       <div class="card">
         <strong>View dashboard</strong>
-        <span>Open and use the apps. Requires signing in with an email and password.</span>
+        <span>Open and use the apps. Sign in with an approved email; no password needed.</span>
         <div class="row"><a href="#/view"><button>View dashboard</button></a></div>
       </div>
       <div class="card">
@@ -211,28 +211,50 @@ async function renderEditGuide() {
   main.querySelector('#guide').textContent = await fetch('llms.txt').then((r) => r.text());
 }
 
-function renderLogin() {
+// Passwordless sign-in: email a link plus a code; either one signs you in.
+function renderLogin(email = '') {
   main.innerHTML = `
     <form class="login">
       <a href="#/" class="muted">&larr; Back</a>
       <h2>Sign in to view the dashboard</h2>
-      <input name="email" type="email" placeholder="Email" required autocomplete="username">
-      <input name="password" type="password" placeholder="Password" required autocomplete="current-password">
-      <div class="row"><button class="primary" value="in">Sign in</button><button value="up">Create account</button></div>
+      <p class="muted" style="margin:0">No password needed: we'll email you a sign-in link and code. Your email has to be approved by the group admin.</p>
+      <input name="email" type="email" placeholder="Email" required autocomplete="email" value="${esc(email)}">
+      <button class="primary">Email me a sign-in link</button>
     </form>`;
   const form = main.querySelector('form');
-  form.onsubmit = act(async (e) => {
-    const creds = { email: form.email.value, password: form.password.value };
-    if (e.submitter?.value === 'up') {
-      // Send the confirmation link back to this page (not just the domain root).
-      const { data, error } = await sb.auth.signUp({ ...creds, options: { emailRedirectTo: location.origin + location.pathname } });
+  form.onsubmit = act(async () => {
+    const to = form.email.value.trim();
+    form.querySelector('button').disabled = true;
+    try {
+      const { error } = await sb.auth.signInWithOtp({ email: to, options: { emailRedirectTo: location.origin + location.pathname } });
       if (error) throw error;
-      if (!data.session) throw new Error('Check your email for a confirmation link, then sign in.');
-    } else {
-      const { error } = await sb.auth.signInWithPassword(creds);
-      if (error) throw error;
-    }
+    } finally { form.querySelector('button').disabled = false; }
+    renderCode(to);
+  });
+}
+
+function renderCode(email) {
+  main.innerHTML = `
+    <form class="login">
+      <h2>Check your email</h2>
+      <p style="margin:0">We sent a sign-in link and code to <strong>${esc(email)}</strong>. Tap the link, or type the code here:</p>
+      <input name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="Code" required pattern="[0-9 ]{6,10}">
+      <button class="primary">Sign in</button>
+      <div class="row muted"><a href="#/view" id="other">Use a different email</a> · <a href="#/view" id="again">Send a new code</a></div>
+    </form>`;
+  const form = main.querySelector('form');
+  form.code.focus();
+  form.onsubmit = act(async () => {
+    const { error } = await sb.auth.verifyOtp({ email, token: form.code.value.replace(/\s/g, ''), type: 'email' });
+    if (error) throw error;
+    location.hash = '#/';
     render();
+  });
+  main.querySelector('#other').onclick = act(() => renderLogin(email));
+  main.querySelector('#again').onclick = act(async () => {
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (error) throw error;
+    showError(new Error('Sent a new code. Use the newest email.'));
   });
 }
 

@@ -2,7 +2,7 @@
 // Creates throwaway users t?_<tag>@example.com and removes them afterwards.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { admin, client, createUser, keyClient, newUser, signIn, signUp } from '../scripts/api.mjs';
+import { admin, client, createUser, keyClient, newUser, requestCode, signIn } from '../scripts/api.mjs';
 
 const tag = Math.random().toString(36).slice(2, 8);
 const emails = [];
@@ -48,7 +48,7 @@ test('agent keys act as their owner, cannot make keys, and can be revoked', asyn
 });
 
 test('only approved emails can sign up', async () => {
-  await rejects(signUp(`stranger_${tag}@example.com`, 'password123'), /not been approved/);
+  await rejects(requestCode(`stranger_${tag}@example.com`), /not been approved/);
 });
 
 test('members can not use admin functions', () => rejects(a('allow_email', { email: 'x@example.com' }), /permission denied/));
@@ -63,8 +63,8 @@ test('the admin sets usernames when approving; members join with theirs', async 
   await admin('allow_email', { email, username: `tz_${tag}` });
   await rejects(admin('allow_email', { email: `other_${tag}@example.com`, username: `tz_${tag}` }), /another email/);
   await admin('allow_email', { email, username: `tc_${tag}` }); // can change until they join
-  await createUser(email, 'password123');
-  const c = client(await signIn(email, 'password123'));
+  await createUser(email);
+  const c = client(await signIn(email));
   assert.deepEqual(await c('describe'), { me: null, help: 'https://zoox101.github.io/potluck/llms.txt' });
   await rejects(c('query', { sql: 'select 1' }), /claim a username/);
   await rejects(c('create_table', { name: 'x' }), /claim a username/);

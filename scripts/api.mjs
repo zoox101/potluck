@@ -34,11 +34,15 @@ export function findAgentKey() {
   }
 }
 
-export async function signIn(email, password) {
-  return (await request('/auth/v1/token?grant_type=password', SUPABASE_KEY, null, { email, password })).access_token;
+// Sign-in is passwordless. Scripts sign a user in with a one-time code the admin API generates
+// (no email is sent) and return their access token.
+export async function signIn(email) {
+  const { email_otp: token } = await request('/auth/v1/admin/generate_link', secretKey(), null, { type: 'magiclink', email });
+  return (await request('/auth/v1/verify', SUPABASE_KEY, null, { type: 'email', email, token })).access_token;
 }
 
-export const signUp = (email, password) => request('/auth/v1/signup', SUPABASE_KEY, null, { email, password });
+// Ask for a sign-in email, as the site does. Sends a real email to approved addresses.
+export const requestCode = (email) => request('/auth/v1/otp', SUPABASE_KEY, null, { email, create_user: true });
 
 // The project's service_role key, read from the Supabase CLI when needed; never printed or saved.
 let secret;
@@ -55,14 +59,13 @@ function secretKey() {
 
 // Admin calls: approve emails, create confirmed users, remove users.
 export const admin = (fn, args = {}) => request(`/rest/v1/rpc/${fn}`, secretKey(), null, args);
-export const createUser = (email, password) =>
-  request('/auth/v1/admin/users', secretKey(), null, { email, password, email_confirm: true });
+export const createUser = (email) => request('/auth/v1/admin/users', secretKey(), null, { email, email_confirm: true });
 
 // Approve an email with a username, create and sign in the user, then join. Returns rpc for that user.
-export async function newUser(username, password = 'password123', email = `${username}@example.com`) {
+export async function newUser(username, email = `${username}@example.com`) {
   await admin('allow_email', { email, username });
-  await createUser(email, password);
-  const rpc = client(await signIn(email, password));
+  await createUser(email);
+  const rpc = client(await signIn(email));
   await rpc('claim_username');
   return rpc;
 }

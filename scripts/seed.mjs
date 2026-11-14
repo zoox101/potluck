@@ -1,5 +1,5 @@
 // Demo users, tables and apps: npm run seed (re-running replaces them).
-// Users demo_alex, demo_sam and demo_jo sign in as <name>@example.com with password "password123".
+// Users demo_alex, demo_sam and demo_jo (<name>@example.com). Sign-in is by emailed code, so they are API-only demo users.
 import { readFile } from 'node:fs/promises';
 import { admin, newUser } from './api.mjs';
 
@@ -29,4 +29,4 @@ const gui = await alex('create_gui', {
 });
 await jo('fork_gui', { id: gui.id, name: 'Trip Places (Jo)' });
 
-console.log(`Seeded ${names.join(', ')} (password: password123), 2 tables and 2 apps.`);
+console.log(`Seeded ${names.join(', ')}, 2 tables and 2 apps.`);

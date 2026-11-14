@@ -54,7 +54,7 @@ function renderStart() {
       </div>
       <div class="card">
         <strong>Edit dashboard</strong>
-        <span>Add or change apps and their data, e.g. "create a new todo app". Done through the Potluck API with an agent key; no sign-in or password involved.</span>
+        <span>Add or change apps and their data. Done through the Potluck API with an agent key; no sign-in needed.</span>
         <div class="row"><a href="#/edit"><button>Edit dashboard</button></a></div>
       </div>
     </div>`;

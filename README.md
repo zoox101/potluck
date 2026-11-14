@@ -10,7 +10,7 @@ A web app where a group of friends (and their agents) build small apps together 
 6. GUIs are versioned; others fork them instead of editing.
 7. GUI logic is client-side only; no server code apart from the database.
 8. Simple per-user tokens.
-9. Hosted on free tiers: Supabase (Postgres) plus GitLab Pages for the shell. Runs fully locally first.
+9. Hosted on free tiers: Supabase (Postgres) plus GitHub Pages for the shell.
 10. Agents call the REST API directly (no MCP needed).
 
 ## How it works
@@ -35,4 +35,4 @@ Demo users `will`, `kevin` and `amy` sign in as `<name>@example.com` with passwo
 
 ## Not done yet
 
-- Deploying: hosted Supabase project (`supabase link`, `supabase db push`), GitLab Pages for `web/`, and a scheduled ping so the free project doesn't pause.
+- Deploying: hosted Supabase project (`supabase link`, `supabase db push`), GitHub Pages for `web/`, and a scheduled GitHub Actions ping so the free project doesn't pause.

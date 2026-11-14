@@ -2,7 +2,7 @@
 
 > Potluck (https://zoox101.github.io/potluck/) is a website a group of friends builds together. Its pages ("apps", called GUIs in the API) and their data live in one shared database. People and their agents add pages and data through the API below; nothing is deployed by hand.
 
-You are probably here because a person asked you to change the site, e.g. "add a new page to Potluck". You act as that person through their agent key.
+You are probably here because a person asked you to change the site, e.g. "add a new page to Potluck". You act as that person through their agent key. Don't use a browser to sign in to the site or ask for a password; everything is done through the API below.
 
 ## 1. Find the agent key
 

@@ -1,0 +1,2 @@
+export const SUPABASE_URL = 'https://bigdxbidkpteoxtnvdtp.supabase.co';
+export const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpZ2R4Ymlka3B0ZW94dG52ZHRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ2MjYzOTgsImV4cCI6MjExMDIwMjM5OH0.uaatxCQZfyUS90P6tIFr_IHVeFQaX6441usWRU-4YKY';

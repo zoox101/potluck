@@ -7,7 +7,7 @@ Potluck: a web app where a group of friends (and their agents) build small apps 
 1. A web app where friends build GUIs cooperatively; GUIs and their code are stored in the database.
 2. A thin shell: a dashboard of GUIs and a renderer for them.
 3. Generic API endpoints, including creating tables. GUIs and agents use the same API.
-4. Tables are namespaced per user. Only the owner changes a table's schema; anyone adds rows; only a row's creator edits or deletes it.
+4. Tables are namespaced per user. Only the owner changes a table's schema; anyone adds rows; only a row's owner (`owned_by`) edits or deletes it, and a table's owner can reassign rows (`set_row_owner`).
 5. Breaking schema changes are guarded: additive by default, with dependent GUIs flagged.
 6. Any member can edit any GUI. Code and metadata change separately: `update_gui_code` saves a new version (recording who saved it), `update_gui_metadata` changes name, icon, visibility (starred / default / hidden) and so on without one. Only the creator deletes a GUI; anyone can fork.
 7. GUI logic is client-side only; no server code apart from the database.

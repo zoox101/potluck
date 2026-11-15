@@ -35,7 +35,7 @@ test('agent keys act as their owner, cannot make keys, and can be revoked', asyn
   assert.equal((await agent('describe')).me, `ta_${tag}`);
   assert.equal(await agent('create_table', { name: 'agent_made', columns: [{ name: 'note', type: 'text' }] }), `ta_${tag}.agent_made`);
   assert.equal(await agent('insert_rows', { table_name: `ta_${tag}.agent_made`, rows: [{ note: 'x' }, { note: 'y' }] }), 2);
-  const [row] = await b('query', { sql: `select id, created_by from ta_${tag}.agent_made limit 1` });
+  const [row] = await b('query', { sql: `select id, owned_by from ta_${tag}.agent_made limit 1` });
   await rejects(b('delete_row', { table_name: `ta_${tag}.agent_made`, id: row.id }), /not yours/);
   await agent('delete_row', { table_name: `ta_${tag}.agent_made`, id: row.id });
   await rejects(agent('create_api_key', { name: 'nested' }), /permission denied/);
@@ -104,16 +104,34 @@ test('owner creates a table; schema changes are owner-only', async () => {
   await a('add_column', { table_name: T, column_spec: { name: 'qty', type: 'integer' } });
 });
 
-test('anyone adds rows; only the creator edits or deletes them', async () => {
+test('anyone adds rows; only the row owner edits or deletes them', async () => {
   const mine = await a('insert_row', { table_name: T, data: { label: 'a1' } });
   const theirs = await b('insert_row', { table_name: T, data: { label: 'b1', qty: 2 } });
   assert.equal(theirs.qty, 2);
-  await rejects(b('insert_row', { table_name: T, data: { label: 'x', created_by: mine.created_by } }), /set automatically/);
+  await rejects(b('insert_row', { table_name: T, data: { label: 'x', owned_by: mine.owned_by } }), /set automatically/);
   await rejects(a('update_row', { table_name: T, id: theirs.id, data: { label: 'hacked' } }), /not yours/);
   await rejects(a('delete_row', { table_name: T, id: theirs.id }), /not yours/);
   assert.equal((await b('update_row', { table_name: T, id: theirs.id, data: { label: 'b2' } })).label, 'b2');
   assert.equal((await b('delete_row', { table_name: T, id: theirs.id })).id, theirs.id);
   await rejects(a('insert_row', { table_name: 'nobody.items', data: { label: 'x' } }), /Unknown table/);
+});
+
+test('only the table owner reassigns rows; then only the new owner edits them', async () => {
+  const row = await b('insert_row', { table_name: T, data: { label: 'b row' } });
+  await rejects(b('set_row_owner', { table_name: T, ids: [row.id], username: `tb_${tag}` }), /Only ta_/);
+  await rejects(a('update_row', { table_name: T, id: row.id, data: { label: 'taken' } }), /not yours/); // owner can't edit others' rows
+  assert.equal(await a('set_row_owner', { table_name: T, ids: [row.id], username: `ta_${tag}` }), 1);
+  assert.equal((await a('update_row', { table_name: T, id: row.id, data: { label: 'mine now' } })).label, 'mine now');
+  await rejects(b('update_row', { table_name: T, id: row.id, data: { label: 'back' } }), /not yours/);
+  await rejects(b('delete_row', { table_name: T, id: row.id }), /not yours/);
+  await rejects(a('set_row_owner', { table_name: T, ids: [row.id], username: 'nobody_here' }), /No member/);
+  const key = await a('create_api_key', { name: 'reassigner' }); // the owner's agent key counts
+  assert.equal(await keyClient(key)('set_row_owner', { table_name: T, ids: [row.id], username: `tb_${tag}` }), 1);
+  const [listed] = (await a('list_api_keys')).filter((k) => k.name === 'reassigner');
+  await a('revoke_api_key', { id: listed.id });
+  const [owner] = await a('query', { sql: `select u.username from ${T} r join app.users u on u.id = r.owned_by where r.id = ${row.id}` });
+  assert.equal(owner.username, `tb_${tag}`);
+  await b('delete_row', { table_name: T, id: row.id });
 });
 
 test('query is read-only and can join across users', async () => {

@@ -61,8 +61,8 @@ Pages run for whoever opens them, so `db.me()` is the viewer, and writes are att
 ## Rules
 
 - Tables are named `owner.table`. You can only create tables under your own username, and only a table's owner changes its schema.
-- Every member can read every table and add rows to it. Only a row's creator can update or delete it.
-- Every table gets `id`, `created_by`, `created_at` and `updated_at` automatically; don't set them.
+- Every member can read every table and add rows to it. Each row has an owner (`owned_by`, the member who added it); only the owner can update or delete it. A table's owner can reassign rows to any member with `set_row_owner`, and can edit others' rows only by assigning them to themselves first.
+- Every table gets `id`, `owned_by`, `created_at` and `updated_at` automatically; don't set them. To show who owns a row, join `app.users`: `select r.*, u.username from will.places r join app.users u on u.id = r.owned_by`.
 - To add information to someone else's table, create your own table that stores their row `id` (e.g. `kevin.votes.place_id` -> `will.places.id`) and join in `query`.
 - Any member can edit any GUI: `update_gui_code` saves a new version (every version is kept) and `update_gui_metadata` changes its metadata. Before changing someone else's GUI, `get_gui` it, start from its current `code`, and keep the change to what was asked: other people use it, and it runs with each viewer's permissions. `get_gui` shows who saved the latest code version (`saved_by`) and who last changed anything (`updated_by`). Only a GUI's owner (its creator) can `delete_gui` it. `fork_gui` makes your own copy if you want one.
 - `drop_column` and `drop_table` refuse while a GUI lists the table in `reads`; the error names those GUIs. Only pass `force: true` after checking with their owners.
@@ -80,6 +80,7 @@ Pages run for whoever opens them, so `db.me()` is the viewer, and writes are att
 | `insert_rows` | `table_name`, `rows` (array of objects; send at most ~200 per call) | number inserted |
 | `update_row` | `table_name`, `id`, `data` | the updated row |
 | `delete_row` | `table_name`, `id` | the deleted row |
+| `set_row_owner` | `table_name`, `ids` (array), `username` (table owner only) | number of rows reassigned |
 | `query` | `sql` (one read-only `SELECT`; use `owner.table` names) | array of rows |
 | `create_gui` | `name`, `code`, `description?`, `reads?`, `icon?`, `color?`, `visibility?` (default `default`) | `{id, version}` |
 | `update_gui_code` | `id`, `code`, `reads?` | `{id, version}` (the new version) |

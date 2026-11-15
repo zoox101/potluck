@@ -121,9 +121,25 @@ function renderTop(title, g = null) {
   topBar.className = 'signed-in';
   topBar.innerHTML = `
     <button class="icon-button" id="menu" aria-label="Open menu" aria-controls="drawer">${icon('menu')}</button>
-    <a href="#/" class="top-title">${g ? tile(g, 'sm') : '<img src="icons/icon-192.png" class="brand-mark" alt="">'}<span>${esc(title)}</span></a>`;
+    <a href="#/" class="top-title">${g ? tile(g, 'sm') : '<img src="icons/icon-192.png" class="brand-mark" alt="">'}<span>${esc(title)}</span></a>
+    <button class="icon-button" id="copylink" aria-label="Copy link to this page" title="Copy link">${icon('link')}</button>`;
   topBar.querySelector('#menu').onclick = openDrawer;
+  topBar.querySelector('#copylink').onclick = act(copyLink);
   hydrateTiles(topBar);
+}
+
+// Copy the current page's address; the button shows a check for a moment.
+async function copyLink(e) {
+  const button = e.currentTarget;
+  try {
+    await navigator.clipboard.writeText(location.href);
+  } catch {
+    const box = Object.assign(document.createElement('textarea'), { value: location.href });
+    document.body.append(box); box.select(); document.execCommand('copy'); box.remove();
+  }
+  button.innerHTML = icon('check');
+  button.title = 'Copied';
+  setTimeout(() => { button.innerHTML = icon('link'); button.title = 'Copy link'; }, 1500);
 }
 
 // ---------- drawer ----------

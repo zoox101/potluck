@@ -25,11 +25,6 @@ Potluck: a web app where a group of friends (and their agents) build small apps 
 - **The shell** ([web/](web/)) is static files. It signs you in, lists apps (with their Lucide icons) in a slide-out menu and on the apps page, holds agent keys under Settings, and renders a GUI in a sandboxed iframe. GUIs reach data only through the injected `window.db` SDK ([web/sdk.js](web/sdk.js)), which relays to the same API functions.
 - The database design lives in [supabase/migrations](supabase/migrations/); [supabase/config.toml](supabase/config.toml) holds the project settings, including the hook.
 
-## Apps
-
-- **Taiwan Trip** (will): map of the Taiwan Together trip with everyone's votes. Source: [examples/taiwan-trip.html](examples/taiwan-trip.html). Data in `will.taiwan_places` and `will.taiwan_votes` (each vote is a new row; a traveler's latest row per place counts), imported through the API with an agent key from Full Auto's trip snapshot by [scripts/import-taiwan-trip.mjs](scripts/import-taiwan-trip.mjs).
-- **Trip Places** (example, not deployed): small example of joining two users' tables. Source: [examples/trip-places.html](examples/trip-places.html); `npm run seed` loads it with demo users.
-
 ## Working on it
 
 Needs Node. The Supabase CLI is a dev dependency; sign it in once with `npx supabase login`.
@@ -38,7 +33,7 @@ Needs Node. The Supabase CLI is a dev dependency; sign it in once with `npx supa
 npm install
 npm run serve                          # local copy of the shell at http://127.0.0.1:8080
 npm test                               # API rule tests (creates and removes throwaway users)
-npm run seed                           # (re)create the demo users, tables and apps
+npm run seed                           # (re)create the demo users, tables and the example app (examples/trip-places.html)
 npm run admin allow friend@email.com alice   # approve a friend as alice: creates the account and emails a getting-started note with an agent key
 npm run admin welcome friend@email.com       # resend that note to a member; its new agent key replaces their earlier welcome key
 npm run admin email old@email.com new@email.com   # move a member to a new address (sign-in email and approval); also: disallow, remove, list

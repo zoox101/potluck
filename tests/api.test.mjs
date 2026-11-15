@@ -215,6 +215,37 @@ test('GUI metadata changes without new versions; omitted fields are kept; forks 
   assert.deepEqual([g.icon, g.color, g.name], [null, null, 'Renamed']);
 });
 
+test('files: private bucket; members read all, write only their own folder; agent keys via the files function', async () => {
+  const { SUPABASE_URL, SUPABASE_KEY } = await import('../web/config.js');
+  const [ta, tb] = [await signIn(`ta_${tag}@example.com`), await signIn(`tb_${tag}@example.com`)];
+  const storage = (token, method, path, body, type = 'text/plain') => fetch(`${SUPABASE_URL}/storage/v1/${path}`, {
+    method, headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}`, 'Content-Type': type }, body,
+  });
+  const mine = `ta_${tag}/notes/hello.txt`;
+  assert.equal((await storage(ta, 'POST', `object/files/${mine}`, 'hi from a')).status, 200);
+  assert.notEqual((await storage(ta, 'POST', `object/files/tb_${tag}/sneaky.txt`, 'x')).status, 200); // not in b's folder
+  assert.notEqual((await fetch(`${SUPABASE_URL}/storage/v1/object/public/files/${mine}`)).status, 200); // bucket isn't public
+  const signed = await (await storage(tb, 'POST', `object/sign/files/${mine}`, JSON.stringify({ expiresIn: 60 }), 'application/json')).json();
+  assert.equal(await (await fetch(`${SUPABASE_URL}/storage/v1${signed.signedURL}`)).text(), 'hi from a'); // b reads a's file
+  await storage(tb, 'DELETE', `object/files/${mine}`);
+  assert.equal((await storage(ta, 'GET', `object/authenticated/files/${mine}`)).status, 200); // b couldn't delete it
+
+  const key = await a('create_api_key', { name: 'files agent' });
+  const fn = (body, k = key) => fetch(`${SUPABASE_URL}/functions/v1/files`, {
+    method: 'POST', headers: { apikey: SUPABASE_KEY, 'x-potluck-key': k, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  }).then(async (r) => ({ status: r.status, ...(await r.json()) }));
+  assert.equal((await fn({ action: 'upload', path: 'notes/agent.txt', base64: Buffer.from('from agent').toString('base64') })).path, `ta_${tag}/notes/agent.txt`);
+  const listed = (await fn({ action: 'list', folder: `ta_${tag}/notes` })).files.map((f) => f.path).sort();
+  assert.deepEqual(listed, [`ta_${tag}/notes/agent.txt`, mine]);
+  const { links } = await fn({ action: 'urls', paths: [`ta_${tag}/notes/agent.txt`] });
+  assert.equal(await (await fetch(links[`ta_${tag}/notes/agent.txt`])).text(), 'from agent');
+  assert.equal((await fn({ action: 'remove', paths: [`tb_${tag}/x.txt`] })).status, 403);
+  assert.equal((await fn({ action: 'list' }, 'pk_wrong')).status, 401);
+  assert.deepEqual((await fn({ action: 'remove', paths: [mine, `ta_${tag}/notes/agent.txt`] })).removed.length, 2);
+  const [k] = (await a('list_api_keys')).filter((x) => x.name === 'files agent');
+  await a('revoke_api_key', { id: k.id });
+});
+
 test('withdrawing approval locks a member out', async () => {
   await admin('disallow_email', { email: `tb_${tag}@example.com` });
   await rejects(b('insert_row', { table_name: T, data: { label: 'x' } }), /approved email/);

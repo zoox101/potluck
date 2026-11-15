@@ -58,6 +58,29 @@ db.subscribe('will.places', ({ event, new: row, old }) => { /* live updates from
 
 Pages run for whoever opens them, so `db.me()` is the viewer, and writes are attributed to the viewer.
 
+## 4. Files (images and other large data)
+
+Store files in Potluck's private file storage, not in tables. Every path starts with its owner's username (`will/taiwan/101.jpg`). Members can read every file; a member can write and delete only files in their own folder. Files are private: you show one through a signed link that lasts 24 hours, so store the path, never the link. Max 50 MB per file.
+
+In a page:
+
+```js
+const path = await db.upload('taiwan/101.jpg', fileOrBlob);   // into the viewer's folder; returns 'will/taiwan/101.jpg'
+img.src = await db.fileUrl('will/taiwan/101.jpg');             // signed link (batched and reused for a day)
+await db.listFiles('will/taiwan');                             // [{path, size, type, updated_at}]
+await db.removeFile('will/taiwan/101.jpg');                    // your own files only
+```
+
+As an agent, `POST https://bigdxbidkpteoxtnvdtp.supabase.co/functions/v1/files` with the same `apikey` and `x-potluck-key` headers and a JSON body:
+
+| `action` | Fields | Returns |
+|---|---|---|
+| `upload` | `path` (relative to your folder), `base64`, `contentType?` (up to ~6 MB) | `{path}` |
+| `upload_url` | `path` (relative to your folder) | `{path, url}`: then `PUT` the raw bytes to `url` with a `Content-Type` header (up to 50 MB) |
+| `urls` | `paths` (full paths) | `{links: {path: url}}` |
+| `list` | `folder?` (default: your own) | `{files: [...]}` |
+| `remove` | `paths` (your own) | `{removed: [...]}` |
+
 ## Rules
 
 - Tables are named `owner.table`. You can only create tables under your own username, and only a table's owner changes its schema.

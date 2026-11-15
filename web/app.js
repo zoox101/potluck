@@ -425,6 +425,7 @@ function bridge(frame) {
     const m = e.data || {};
     if (m.type === 'call') {
       try {
+        if (FILE_METHODS[m.method]) { send({ type: 'reply', id: m.id, data: await FILE_METHODS[m.method](m.args || {}) }); return; }
         if (!ALLOWED.has(m.method)) throw new Error(`Unknown method ${m.method}`);
         send({ type: 'reply', id: m.id, data: await rpc(m.method, m.args) });
       } catch (err) {
@@ -442,6 +443,44 @@ function bridge(frame) {
   addEventListener('message', onMessage);
   return () => { removeEventListener('message', onMessage); channels.forEach((c) => sb.removeChannel(c)); };
 }
+
+// Private file storage for apps, in the `files` bucket. Paths start with the owner's username; apps upload
+// into the viewer's own folder (given a path relative to it) and read anyone's files through signed links.
+const FILE_LINK_SECONDS = 24 * 3600;
+const files = () => sb.storage.from('files');
+const cleanPath = (p) => {
+  const path = String(p ?? '').replace(/^\/+/, '');
+  if (!path || path.split('/').some((part) => !part || part === '.' || part === '..')) throw new Error(`Invalid file path "${p}"`);
+  return path;
+};
+const FILE_METHODS = {
+  async file_upload({ path, file, contentType }) {
+    const full = `${info.me}/${cleanPath(path)}`;
+    const { error } = await files().upload(full, file, { upsert: true, contentType: contentType || file?.type || 'application/octet-stream' });
+    if (error) throw new Error(error.message);
+    return full;
+  },
+  async file_urls({ paths }) {
+    const list = [...new Set((paths || []).map(cleanPath))].slice(0, 500);
+    if (!list.length) return {};
+    const { data, error } = await files().createSignedUrls(list, FILE_LINK_SECONDS);
+    if (error) throw new Error(error.message);
+    return Object.fromEntries(data.filter((d) => d.signedUrl).map((d) => [d.path, d.signedUrl]));
+  },
+  async file_list({ folder }) {
+    const dir = folder ? cleanPath(folder) : info.me;
+    const { data, error } = await files().list(dir, { limit: 1000, sortBy: { column: 'name', order: 'asc' } });
+    if (error) throw new Error(error.message);
+    return data.filter((f) => f.id).map((f) => ({ path: `${dir}/${f.name}`, size: f.metadata?.size ?? null, type: f.metadata?.mimetype ?? null, updated_at: f.updated_at }));
+  },
+  async file_remove({ path }) {
+    const full = cleanPath(path);
+    if (!full.startsWith(`${info.me}/`)) throw new Error('You can only remove your own files');
+    const { error } = await files().remove([full]);
+    if (error) throw new Error(error.message);
+    return full;
+  },
+};
 
 // Saves the copied key to <home>/.config/potluck/agent.key, where llms.txt tells agents to look.
 const SAVE_KEY = {

@@ -16,6 +16,29 @@ export const SDK = `<script>
     const id = ++n; pending[id] = { resolve, reject };
     parent.postMessage({ type: 'call', id, method, args }, '*');
   });
+  // Files are private: show one with a short-lived signed link. fileUrl batches requests made in the
+  // same moment and reuses a link until it's within an hour of expiring (links last a day).
+  const links = new Map(); let queue = null;
+  const fileUrl = (path) => {
+    const hit = links.get(path);
+    if (hit && hit.until > Date.now()) return hit.url;
+    if (!queue) {
+      queue = new Map();
+      setTimeout(() => {
+        const batch = queue; queue = null;
+        call('file_urls', { paths: [...batch.keys()] }).then((urls) => {
+          for (const [p, waiters] of batch) {
+            const url = urls[p];
+            if (url) links.set(p, { url: Promise.resolve(url), until: Date.now() + 23 * 3600e3 });
+            waiters.forEach(([ok, fail]) => (url ? ok(url) : fail(new Error('File not found: ' + p))));
+          }
+        }, (err) => batch.forEach((waiters) => waiters.forEach(([, fail]) => fail(err))));
+      }, 10);
+    }
+    const url = new Promise((ok, fail) => { if (!queue.has(path)) queue.set(path, []); queue.get(path).push([ok, fail]); });
+    links.set(path, { url, until: Date.now() + 60e3 });
+    return url;
+  };
   window.db = {
     call,
     query: (sql) => call('query', { sql }),
@@ -27,6 +50,10 @@ export const SDK = `<script>
     describe: () => call('describe'),
     me: () => call('describe').then((d) => d.me),
     subscribe: (table, fn) => { const sub = ++n; subs[sub] = fn; parent.postMessage({ type: 'subscribe', sub, table }, '*'); },
+    upload: (path, file, contentType) => call('file_upload', { path, file, contentType }),
+    fileUrl,
+    listFiles: (folder = '') => call('file_list', { folder }),
+    removeFile: (path) => call('file_remove', { path }),
   };
 })();
 <\/script>`;

@@ -68,6 +68,18 @@ function secretKey() {
 export const admin = (fn, args = {}) => request(`/rest/v1/rpc/${fn}`, secretKey(), null, args);
 export const createUser = (email) => request('/auth/v1/admin/users', secretKey(), null, { email, email_confirm: true });
 
+// Change an account's sign-in email (confirmed, no email sent).
+export async function setUserEmail(userId, email) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+    method: 'PUT',
+    headers: { apikey: secretKey(), Authorization: `Bearer ${secretKey()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, email_confirm: true }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.msg ?? data?.message ?? res.statusText);
+  return data;
+}
+
 // Approve an email with a username, create and sign in the user, then join. Returns rpc for that user.
 export async function newUser(username, email = `${username}@example.com`) {
   await admin('allow_email', { email, username });

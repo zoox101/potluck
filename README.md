@@ -40,7 +40,8 @@ npm run serve                          # local copy of the shell at http://127.0
 npm test                               # API rule tests (creates and removes throwaway users)
 npm run seed                           # (re)create the demo users, tables and apps
 npm run admin allow friend@email.com alice   # approve a friend as alice: creates the account and emails a getting-started note with an agent key
-npm run admin welcome friend@email.com       # resend that note to a member; its new agent key replaces their earlier welcome key; also: disallow, remove, list
+npm run admin welcome friend@email.com       # resend that note to a member; its new agent key replaces their earlier welcome key
+npm run admin email old@email.com new@email.com   # move a member to a new address (sign-in email and approval); also: disallow, remove, list
 npx supabase db push --remote          # apply new migration files
 npx supabase config push               # apply config.toml changes (check `npx supabase config diff` first); needs the SMTP env vars below
 ```

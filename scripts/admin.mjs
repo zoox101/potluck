@@ -2,11 +2,12 @@
 //   npm run admin allow friend@example.com alice   approve an email as username alice, create the account and
 //                                                  email a getting-started note with an agent key
 //   npm run admin welcome friend@example.com       email an existing member the note again; the new key replaces their old welcome key
+//   npm run admin email old@example.com new@example.com   move a member (or approved email) to a new address
 //   npm run admin disallow friend@example.com      withdraw approval
 //   npm run admin remove friend@example.com        delete a user and everything they created
 //   npm run admin list                             show approved emails, usernames and who has signed in
 // Emails go out through the site's Gmail account; see scripts/welcome.mjs for where its credentials live.
-import { admin, createUser, signInLink } from './api.mjs';
+import { admin, createUser, setUserEmail, signInLink } from './api.mjs';
 import { sendWelcome } from './welcome.mjs';
 
 const [command, email, username] = process.argv.slice(2);
@@ -37,9 +38,14 @@ if (command === 'list') {
 } else if (command === 'welcome' && email) {
   if (!(await entry(email))?.joined) throw new Error(`${email} isn't a member yet; approve them with \`npm run admin allow ${email} <username>\``);
   await welcome(email);
+} else if (command === 'email' && email && username) {
+  const to = username; // third argument is the new address
+  const moved = await admin('admin_change_email', { old_email: email, new_email: to });
+  if (moved.user_id) await setUserEmail(moved.user_id, moved.email);
+  console.log(`email: ${email} -> ${moved.email}${moved.user_id ? ' (account and approval)' : ' (approval only; no account yet)'}`);
 } else if (fns[command] && email) {
   console.log(`${command}: ${await admin(fns[command], { email })}`);
 } else {
-  console.log('Usage: npm run admin allow <email> <username> | welcome <email> | disallow <email> | remove <email> | list');
+  console.log('Usage: npm run admin allow <email> <username> | welcome <email> | email <old> <new> | disallow <email> | remove <email> | list');
   process.exit(1);
 }

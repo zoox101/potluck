@@ -2,7 +2,7 @@
 // Creates throwaway users t?_<tag>@example.com and removes them afterwards.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { admin, client, createUser, keyClient, newUser, requestCode, signIn } from '../scripts/api.mjs';
+import { admin, client, createUser, keyClient, newUser, requestCode, setUserEmail, signIn } from '../scripts/api.mjs';
 
 const tag = Math.random().toString(36).slice(2, 8);
 const emails = [];
@@ -93,6 +93,21 @@ test('the admin can create a member with a first agent key before they sign in',
   assert.equal((await admin('admin_list_keys', { email })).filter((k) => k.name === 'Welcome key').length, 1);
   await rejects(admin('admin_add_member', { email: `nobody_${tag}@example.com` }), /No account/);
   await rejects(a('admin_add_member', { email }), /permission denied/);
+});
+
+test('the admin moves a member to a new email; username and sign-in follow', async () => {
+  const old = `te_${tag}@example.invalid`, next = `te2_${tag}@example.com`;
+  emails.push(next);
+  await admin('allow_email', { email: old, username: `te_${tag}` });
+  await createUser(old);
+  await admin('admin_add_member', { email: old });
+  await rejects(admin('admin_change_email', { old_email: old, new_email: `ta_${tag}@example.com` }), /already in use/);
+  const moved = await admin('admin_change_email', { old_email: old, new_email: next });
+  await setUserEmail(moved.user_id, moved.email);
+  assert.equal(await client(await signIn(next))('claim_username'), `te_${tag}`);
+  const listed = (await admin('list_allowed_emails')).map((r) => r.email);
+  assert.ok(listed.includes(next) && !listed.includes(old));
+  await rejects(a('admin_change_email', { old_email: next, new_email: old }), /permission denied/);
 });
 
 test('owner creates a table; schema changes are owner-only', async () => {
